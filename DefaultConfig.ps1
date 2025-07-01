@@ -21,7 +21,6 @@ Get-AppxPackage -AllUsers *Microsoft.ZuneVideo* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *MicrosoftCorporationII.MicrosoftFamily* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Microsoft.OutlookForWindows* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Microsoft.Todos* | Remove-AppxPackage
-Get-AppxPackage -AllUsers *Microsoft.WidgetsPlatformRuntime* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *MSTeams* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage
 #BackgroundType: 0 -> Picture | 1 -> Solid color | 2 -> Slideshow
