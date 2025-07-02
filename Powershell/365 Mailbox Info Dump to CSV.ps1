@@ -19,3 +19,25 @@ Get-Mailbox -ResultSize Unlimited | Get-MailboxPermission | Select-Object Identi
 #SharedMailbox
 #TeamMailbox (Exchange 2013 or later and cloud)
 #UserMailbox
+
+#365 Groups - Needs Tested
+Get-UnifiedGroup -ResultSize Unlimited | Select-Object Identity, User, AccessRights | Where-Object { $_.User -like '*@*' } | Export-Csv -Path C:\IT\365groups.csv -NoTypeInformation
+
+#Distro Group - Needs Tested
+Get-DistributionGroup -ResultSize Unlimited | Select-Object Identity, User, AccessRights | Where-Object { $_.User -like '*@*' } | Export-Csv -Path C:\IT\365groups.csv -NoTypeInformation
+
+#Dynamic Distro Group - Needs Tested
+Get-DynamicDistributionGroup -ResultSize Unlimited | Select-Object Identity, User, AccessRights | Where-Object { $_.User -like '*@*' } | Export-Csv -Path C:\IT\365groups.csv -NoTypeInformation
+
+#Alternate Method for 365 and Distro Groups and dumps csv to user's desktop
+$Groups = Get-UnifiedGroup -ResultSize Unlimited
+
+$Groups | ForEach-Object {
+$group = $_
+Get-UnifiedGroupLinks -Identity $group.Name -LinkType Members -ResultSize Unlimited | ForEach-Object {
+      New-Object -TypeName PSObject -Property @{
+       Group = $group.DisplayName
+       Member = $_.Name
+       EmailAddress = $_.PrimarySMTPAddress
+       RecipientType= $_.RecipientType
+}}} | Export-CSV "$env:USERPROFILE\Desktop\Office365GroupMembers.csv" -NoTypeInformation -Encoding UTF8
