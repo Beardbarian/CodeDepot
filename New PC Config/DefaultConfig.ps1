@@ -23,7 +23,7 @@ Get-AppxPackage -AllUsers *Microsoft.OutlookForWindows* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Microsoft.Todos* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *MSTeams* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage
-#BackgroundType: 0 -> Picture | 1 -> Solid color | 2 -> Slideshow
+#Disables Windows Spotlight, sets background to solid color black.
 Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\CloudContent' -Name DisableSpotlightCollectionOnDesktop -type DWord -Value '1'
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings' -Name EnabledState -type DWord -Value '0'
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers' -Name BackgroundType -type DWord -Value '1'
@@ -40,5 +40,5 @@ Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' 
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name ShowTaskViewButton -type DWord -Value '0'
 #Hide chat
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name TaskbarMn -type DWord -Value '0'
-# Re-start windows Explorer:
+# Restart windows Explorer
 Stop-Process -ProcessName explorer
