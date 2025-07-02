@@ -1,5 +1,6 @@
 #Remove all network printers
 #Better to use Powershell where possible
+# https://github.com/Beardbarian/Depo/blob/main/Powershell/Remove%20Printers.ps1
 
 strComputer = "."  
 Set objWMIService = GetObject("winmgmts:\\" & strComputer & "\root\cimv2")  
