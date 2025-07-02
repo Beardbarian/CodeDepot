@@ -23,6 +23,8 @@ Get-AppxPackage -AllUsers *Microsoft.OutlookForWindows* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Microsoft.Todos* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *MSTeams* | Remove-AppxPackage
 Get-AppxPackage -AllUsers *Copilot* | Remove-AppxPackage
+#Possible Alternative
+#Get-AppxPackage -AllUsers | Where-Object { $_.Name -notlike "*paint*"} | Where-Object { $_.Name -notlike "*xbox*"} | Where-Object { $_.Name -notlike "*gaming*"} | Where-Object { $_.Name -notlike "*notepad*"} | Where-Object { $_.Name -notlike "*store*"} | Remove-AppxPackage
 #Disables Windows Spotlight, sets background to solid color black.
 Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\CloudContent' -Name DisableSpotlightCollectionOnDesktop -type DWord -Value '1'
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings' -Name EnabledState -type DWord -Value '0'
