@@ -1,0 +1,11 @@
+All Steps in Azure:
+
+1. Create Group for Service Accounts
+2. Add Sync account to group
+3. Create Named location using external IP of system that performs sync
+4. Add Service account as exception to MFA policy
+5. Create new policy "{business name} Service Accounts"
+6. Include the service account group
+      Target: All cloud apps
+      Condition: Named Location
+      Grant: Block access
