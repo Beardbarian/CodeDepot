@@ -1,0 +1,10 @@
+1. https://admin.powerplatform.microsoft.com/
+2. Go to Resources > Capacity
+3. Click "Assign to an environment"
+4. Use the default environment unless otherwise specified
+5. Change the respective license from a 0 to a 1 (or add 1 for each additional license)
+6. Save
+7. Go to Environments
+8. Select the environment and click "Enable Managed Environments"
+9. Fill out the applicable information
+10. Save
