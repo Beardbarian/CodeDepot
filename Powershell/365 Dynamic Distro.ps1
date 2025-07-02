@@ -1,4 +1,6 @@
-((RecipientType -eq 'UserMailbox') -and (-not(Name -like 'SystemMailbox{*')) 
+#Can be set as a single line, if needed
+((RecipientType -eq 'UserMailbox') 
+-and (-not(Name -like 'SystemMailbox{*')) 
 -and (-not(Name -like 'CAS_{*')) 
 -and (-not(RecipientTypeDetailsValue -eq 'MailboxPlan')) 
 -and (-not(RecipientTypeDetailsValue -eq'DiscoveryMailbox')) 
