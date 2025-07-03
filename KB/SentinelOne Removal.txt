@@ -1,0 +1,8 @@
+1. Open your SentinelOne console and navigate to Sentinels > Packages. 
+2. Download the SentinelOneInstaller_windows_64bit_v24_1_5_277.exe file and save it onto the endpoint. 
+3. Boot the endpoint into Safe Mode. 
+4. Run the following commands in Command Prompt as an Administrator: > 
+cd *path to folder where the installation package resides*  
+SentinelOneInstaller_windows_64bit_v24_1_5_277.exe -c
+5. After some time, another Command Prompt box will pop up indicating the endpoint can be restarted. You can then restart the endpoint, and the agent should then be removed. 
+6. If you wish to reinstall the agent, another installation of the agent can be performed once booted into normal Windows mode.
