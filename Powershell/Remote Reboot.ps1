@@ -1,2 +1,2 @@
 $Creds = Get-Credential
-Restart-Computer -ComputerName PHB-CE1 -Credential $Creds -Force
+Restart-Computer -ComputerName "PC Name" -Credential $Creds -Force
