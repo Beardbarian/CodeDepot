@@ -9,7 +9,7 @@ robocopy "source path" "destination path" /E /XC /XN /XO
 attrib -h  -s  -a "destination path"
 
 ##use /xj to exclude junction points
-robocopy "source" "dest" /E /XO /XJ /B /COPYALL /MT:64 /R:3 /W:5 /LOG:C:\IT\Data.txt
+robocopy "source" "dest" /E /XJ /B /COPYALL /MT:64 /R:3 /W:5 /LOG:C:\IT\Data.txt
 
 #use /xd to exclude a path
 robocopy "source" "dest" /E /XC /XN /XO /w:0 /r:0 /XD "excluded path" /LOG:C:\IT\Data.txt
