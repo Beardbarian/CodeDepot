@@ -8,7 +8,7 @@ $value = "0"
 New-Item -Path $path -Name $key –Force
 New-ItemProperty -Path $path\$key -Name $name -Value $value -PropertyType DWORD -Force
 
-#Delete existing pins
+:: Delete existing pins
 
 $passportFolder = "C:\Windows\ServiceProfiles\LocalService\AppData\Local\Microsoft\Ngc"
 if(Test-Path -Path $passportFolder)
