@@ -1,4 +1,4 @@
-#Disable pin requirement
+:: Disable pin requirement
 
 $path = "HKLM:\SOFTWARE\Policies\Microsoft"
 $key = "PassportForWork"
