@@ -2,7 +2,7 @@ $objShell = New-Object -ComObject Shell.Application
 $objFolder = $objShell.Namespace(0xA)
 $WinTemp = "c:\Windows\Temp\*"
 
-#Remove Temp Files  
+:: Remove Temp Files  
 write-Host "Removing Temp" -ForegroundColor Green  
 Set-Location “C:\Windows\Temp”  
 Remove-Item * -Recurse -Force -ErrorAction SilentlyContinue  
@@ -13,7 +13,7 @@ Remove-Item “.\*\Local Settings\temp\*” -Recurse -Force -ErrorAction Silentl
 Set-Location “C:\Users”  
 Remove-Item “.\*\Appdata\Local\Temp\*” -Recurse -Force -ErrorAction SilentlyContinue  
 
-#Running Disk Clean up Tool  
+:: Running Disk Clean up Tool  
 write-Host "Running the Windows Disk Clean up Tool" -ForegroundColor White  
 cleanmgr /sagerun:1 | out-Null  
 $([char]7)  
