@@ -10,6 +10,6 @@ move c:\windows\system32\utilman.old c:\windows\system32\utilman.exe
 
 --------------------------------
 Note:
-Most usefule for enabling local admin account using the following:
+Most useful for enabling local admin account using the following:
 net user administrator /active:yes
 net user administrator password
