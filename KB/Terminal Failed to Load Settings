@@ -1,0 +1,5 @@
+1. Close all Terminal windows
+2. Navigate to the following:
+%localappdata%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState
+3. Delete "Settings.json"
+4. Lauch Terminal to have it rebuild settings.json
