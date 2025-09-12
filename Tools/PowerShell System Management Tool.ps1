@@ -18,7 +18,7 @@ $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Lig
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "System Management Tool"
+$form.Text = "KHN System Management Tool"
 $form.Size = New-Object System.Drawing.Size(840, 700)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
