@@ -1,5 +1,26 @@
 # PowerShell System Management Tool
-# Requires -RunAsAdministrator
+
+# Check if running as administrator and self-elevate if needed
+$currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+$adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
+
+if (-not $principal.IsInRole($adminRole)) {
+    try {
+        $scriptPath = $MyInvocation.MyCommand.Path
+        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -Verb RunAs
+        exit
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "This tool requires administrative privileges to function properly. Please run as administrator.",
+            "Administrator Rights Required",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        exit
+    }
+}
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -221,7 +242,7 @@ function Test-RemoteConnection {
 }
 
 # Function to run commands (local or remote)
-function Invoke-Command {
+function Invoke-RemoteCommand {
     param(
         [string]$scriptBlock,
         [string]$computerName
@@ -231,7 +252,8 @@ function Invoke-Command {
         if ($computerName -eq $env:COMPUTERNAME -or $computerName -eq ".") {
             return Invoke-Expression $scriptBlock
         } else {
-            return Invoke-Expression "Invoke-Command -ComputerName $computerName -ScriptBlock { $scriptBlock }"
+            $scriptBlockObj = [ScriptBlock]::Create($scriptBlock)
+            return Invoke-Command -ComputerName $computerName -ScriptBlock $scriptBlockObj
         }
     }
     catch {
@@ -472,26 +494,82 @@ function Invoke-LogOffUsers {
         return
     }
     
-    $result = [System.Windows.Forms.MessageBox]::Show(
-        "Are you sure you want to log off all users on $computerName?",
-        "Confirm Log Off",
-        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]::Warning
-    )
-    
-    if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
-        Update-Status "Logging off users on $computerName..."
-        try {
-            $script = {
-                logoff /server:$env:COMPUTERNAME /v
+    # Get current sessions first
+    try {
+        $sessions = $null
+        if ($computerName -eq "." -or $computerName -eq $env:COMPUTERNAME) {
+            $sessions = query session 2>&1
+        } else {
+            $sessions = Invoke-Command -ComputerName $computerName -ScriptBlock { query session 2>&1 }
+        }
+        
+        # Filter out the header and console session
+        $activeSessions = $sessions | Select-Object -Skip 1 | Where-Object { 
+            $_ -match '\s+(rdp-tcp|console)\s+' -and $_ -notmatch '^\s*SESSIONNAME'
+        }
+        
+        if (-not $activeSessions) {
+            $outputBox.Text = "No active user sessions found on $computerName"
+            Update-Status "Ready"
+            return
+        }
+        
+        # Show sessions that will be logged off
+        $sessionList = $activeSessions | ForEach-Object { $_.Trim() } | Out-String
+        $result = [System.Windows.Forms.MessageBox]::Show(
+            "The following sessions will be logged off on $computerName`:`n`n$sessionList`n`nDo you want to continue?",
+            "Confirm Log Off",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        
+        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Update-Status "Logging off users on $computerName..."
+            
+            if ($computerName -eq "." -or $computerName -eq $env:COMPUTERNAME) {
+                # Local logoff
+                foreach ($session in $activeSessions) {
+                    if ($session -match '\s+(\d+)\s+') {
+                        $sessionId = $Matches[1]
+                        Start-Process "logoff.exe" -ArgumentList $sessionId -Wait
+                    }
+                }
+            } else {
+                # Remote logoff
+                Invoke-Command -ComputerName $computerName -ScriptBlock {
+                    param($sessions)
+                    foreach ($session in $sessions) {
+                        if ($session -match '\s+(\d+)\s+') {
+                            $sessionId = $Matches[1]
+                            Start-Process "logoff.exe" -ArgumentList $sessionId -Wait
+                        }
+                    }
+                } -ArgumentList $activeSessions
             }
             
-            $result = Invoke-Command -scriptBlock $script -computerName $computerName
-            $outputBox.Text = "Successfully initiated logoff on $computerName`n$result"
+            Start-Sleep -Seconds 1
+            
+            # Verify logoff
+            $remainingSessions = $null
+            if ($computerName -eq "." -or $computerName -eq $env:COMPUTERNAME) {
+                $remainingSessions = query session 2>&1
+            } else {
+                $remainingSessions = Invoke-Command -ComputerName $computerName -ScriptBlock { query session 2>&1 }
+            }
+            
+            $activeRemaining = $remainingSessions | Select-Object -Skip 1 | Where-Object { 
+                $_ -match '\s+(rdp-tcp|console)\s+' -and $_ -notmatch '^\s*SESSIONNAME'
+            }
+            
+            if ($activeRemaining) {
+                $outputBox.Text = "Warning: Some sessions may still be active on $computerName`:`n`n$($activeRemaining | Out-String)"
+            } else {
+                $outputBox.Text = "Successfully logged off all users on $computerName"
+            }
         }
-        catch {
-            $outputBox.Text = "Error logging off users: $_"
-        }
+    }
+    catch {
+        $outputBox.Text = "Error managing user sessions: $($_.Exception.Message)"
     }
     Update-Status "Ready"
 }
@@ -540,15 +618,15 @@ function Restart-TargetComputer {
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         Update-Status "Initiating restart of $computerName..."
         try {
-            $script = {
+            if ($computerName -eq "." -or $computerName -eq $env:COMPUTERNAME) {
                 Restart-Computer -Force
+            } else {
+                Invoke-Command -ComputerName $computerName -ScriptBlock { Restart-Computer -Force }
             }
-            
-            Invoke-Command -scriptBlock $script -computerName $computerName
             $outputBox.Text = "Restart initiated on $computerName"
         }
         catch {
-            $outputBox.Text = "Error restarting computer: $_"
+            $outputBox.Text = "Error restarting computer: $($_.Exception.Message)"
         }
     }
     Update-Status "Ready"
