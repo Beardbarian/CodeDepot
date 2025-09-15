@@ -1,4 +1,4 @@
-# PowerShell System Management Tool
+# PowerShell System Management Tool v1.2
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
