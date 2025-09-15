@@ -70,6 +70,13 @@ $computerInput.Text = $env:COMPUTERNAME
 $computerInput.BackColor = $controlBackground
 $computerInput.ForeColor = $textColor
 
+# Add TextChanged event handler
+$computerInput.Add_TextChanged({
+    if ([string]::IsNullOrWhiteSpace($computerInput.Text)) {
+        $outputBox.Text = "Please enter computer name and click a button."
+    }
+})
+
 # Output Area
 $outputGroup = New-Object System.Windows.Forms.GroupBox
 $outputGroup.Text = "Output"
@@ -638,6 +645,19 @@ function Get-InstalledApplications {
     if ([string]::IsNullOrWhiteSpace($computerName)) { $computerName = "." }
     
     if (-not (Test-RemoteConnection $computerName)) {
+        Update-Status "Ready"
+        return
+    }
+    
+    # Show warning message
+    $warningResult = [System.Windows.Forms.MessageBox]::Show(
+        "This may take a few minutes, and may appear frozen while collecting application info. Click OK to accept and please wait.",
+        "Please Wait",
+        [System.Windows.Forms.MessageBoxButtons]::OKCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+    
+    if ($warningResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
         Update-Status "Ready"
         return
     }
