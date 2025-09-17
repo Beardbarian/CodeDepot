@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.3
+# PowerShell System Management Tool v1.4
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -39,7 +39,7 @@ $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Lig
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.3"
+$form.Text = "PowerShell System Management Tool v1.4"
 $form.Size = New-Object System.Drawing.Size(840, 740)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
