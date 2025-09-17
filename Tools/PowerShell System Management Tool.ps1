@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.2
+# PowerShell System Management Tool v1.3
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -39,12 +39,13 @@ $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Lig
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.2"
-$form.Size = New-Object System.Drawing.Size(840, 700)
+$form.Text = "PowerShell System Management Tool v1.3"
+$form.Size = New-Object System.Drawing.Size(840, 740)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $form.BackColor = $darkBackground
 $form.ForeColor = $textColor
+
 
 # ==========================================
 # Control Creation
@@ -80,7 +81,7 @@ $computerInput.Add_TextChanged({
 # Output Area
 $outputGroup = New-Object System.Windows.Forms.GroupBox
 $outputGroup.Text = "Output"
-$outputGroup.Location = New-Object System.Drawing.Point($margin, 190)
+$outputGroup.Location = New-Object System.Drawing.Point($margin, 230)
 $outputGroup.Size = New-Object System.Drawing.Size(822, 440)
 $outputGroup.BackColor = $panelBackground
 $outputGroup.ForeColor = $textColor
@@ -89,9 +90,14 @@ $outputGroup.ForeColor = $textColor
 $buttonGroup = New-Object System.Windows.Forms.GroupBox
 $buttonGroup.Text = "Actions"
 $buttonGroup.Location = New-Object System.Drawing.Point($margin, 80)
-$buttonGroup.Size = New-Object System.Drawing.Size(822, 100)
+$buttonGroup.Size = New-Object System.Drawing.Size(822, 140)  # Increased height for third row
 $buttonGroup.BackColor = $panelBackground
 $buttonGroup.ForeColor = $textColor
+
+# Button row positions
+$row1Y = 20
+$row2Y = $row1Y + $buttonHeight + 12  # 12px spacing between rows
+$row3Y = $row2Y + $buttonHeight + 12
 
 # Button styling function
 function Style-Button {
@@ -188,6 +194,21 @@ $btnLogOff.Text = "Log Off Users"
 $btnLogOff.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 60)
 $btnLogOff.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnLogOff
+
+# Row 3 - Maintenance and Cleanup
+$btnPrinterCleanup = New-Object System.Windows.Forms.Button
+$btnPrinterCleanup.Text = "Clean Printers"
+$btnPrinterCleanup.Location = New-Object System.Drawing.Point($buttonStartX, 100)  # Third row Y position
+$btnPrinterCleanup.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+$btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
+Style-Button $btnPrinterCleanup
+
+$btnRenamePC = New-Object System.Windows.Forms.Button
+$btnRenamePC.Text = "Rename PC"
+$btnRenamePC.Location = New-Object System.Drawing.Point(($buttonStartX + $buttonWidth + $buttonSpacing), 100)  # Next to Clean Printers
+$btnRenamePC.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+$btnRenamePC.Add_Click({ Start-ComputerRename })
+Style-Button $btnRenamePC
 
 $btnRestart = New-Object System.Windows.Forms.Button
 $btnRestart.Text = "Restart PC"
@@ -649,19 +670,6 @@ function Get-InstalledApplications {
         return
     }
     
-    # Show warning message
-    $warningResult = [System.Windows.Forms.MessageBox]::Show(
-        "This may take a few minutes, and may appear frozen while collecting application info. Click OK to accept and please wait.",
-        "Please Wait",
-        [System.Windows.Forms.MessageBoxButtons]::OKCancel,
-        [System.Windows.Forms.MessageBoxIcon]::Information
-    )
-    
-    if ($warningResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
-        Update-Status "Ready"
-        return
-    }
-    
     Update-Status "Getting installed applications for $computerName..."
     try {
         $script = {
@@ -719,6 +727,291 @@ function Open-AdminShare {
     }
 }
 
+# Function to remove network printers and ports
+function Remove-NetworkPrintersAndPorts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ComputerName
+    )
+
+    try {
+        $script = {
+            # Get all network printers
+            $networkPrinters = Get-WmiObject Win32_Printer | Where-Object { $_.Network -eq $true }
+            
+            # Remove each network printer
+            foreach ($printer in $networkPrinters) {
+                try {
+                    $printer.Delete()
+                    Write-Host "Removed printer: $($printer.Name)"
+                }
+                catch {
+                    Write-Warning "Failed to remove printer $($printer.Name): $_"
+                }
+            }
+
+            # Get all printer ports
+            $ports = Get-WmiObject Win32_TCPIPPrinterPort
+
+            # Get ports that are actually in use by local printers
+            $usedPorts = (Get-WmiObject Win32_Printer | Where-Object { $_.Network -eq $false }).PortName
+
+            # Remove unused printer ports
+            foreach ($port in $ports) {
+                if ($usedPorts -notcontains $port.Name) {
+                    try {
+                        $port.Delete()
+                        Write-Host "Removed unused port: $($port.Name)"
+                    }
+                    catch {
+                        Write-Warning "Failed to remove port $($port.Name): $_"
+                    }
+                }
+            }
+
+            return $true
+        }
+
+        $result = Invoke-Command -ComputerName $ComputerName -ScriptBlock $script
+        return $result
+    }
+    catch {
+        Write-Error "Error during printer cleanup: $_"
+        return $false
+    }
+}
+
+# Function to handle printer cleanup from GUI
+function Start-PrinterCleanup {
+    if ([string]::IsNullOrWhiteSpace($computerInput.Text)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a target computer name first.",
+            "No Computer Specified",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $result = [System.Windows.Forms.MessageBox]::Show(
+        "This will remove all network printers and unused printer ports on $($computerInput.Text).`n`nDo you want to continue?",
+        "Confirm Printer Cleanup",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        Update-Status "Starting printer cleanup on $($computerInput.Text)..."
+        
+        try {
+            $success = Remove-NetworkPrintersAndPorts -ComputerName $computerInput.Text
+            
+            if ($success) {
+                $outputBox.Text = "Successfully removed network printers and unused ports on $($computerInput.Text)"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Printer cleanup completed successfully.",
+                    "Success",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+            }
+            else {
+                throw "Cleanup operation returned failure"
+            }
+        }
+        catch {
+            $outputBox.Text = "Error: $_"
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to complete printer cleanup: $_",
+                "Error",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+        }
+        Update-Status "Ready"
+    }
+}
+
+# Function to rename a remote computer
+function Rename-RemoteComputer {
+    param(
+        [string]$ComputerName,
+        [string]$NewName
+    )
+
+    try {
+        # Input validation
+        if ([string]::IsNullOrWhiteSpace($ComputerName) -or [string]::IsNullOrWhiteSpace($NewName)) {
+            throw "Both computer name and new name are required."
+        }
+
+        # Check if new name is valid
+        if ($NewName -notmatch '^[a-zA-Z0-9-]{1,15}$') {
+            throw "New computer name can only contain letters, numbers, and hyphens, and must be 1-15 characters long."
+        }
+
+        # Create the rename script block
+        $scriptBlock = {
+            param($newName)
+            
+            try {
+                # Get current computer info
+                $currentName = $env:COMPUTERNAME
+                
+                # Rename the computer
+                Rename-Computer -NewName $newName -Force -PassThru
+                
+                return @{
+                    Success = $true
+                    Message = "Computer renamed from $currentName to $newName. A restart is required to apply the change."
+                }
+            }
+            catch {
+                return @{
+                    Success = $false
+                    Message = "Failed to rename computer: $_"
+                }
+            }
+        }
+
+        # Execute the rename operation
+        $result = Invoke-Command -ComputerName $ComputerName -ScriptBlock $scriptBlock -ArgumentList $NewName
+
+        return $result
+    }
+    catch {
+        return @{
+            Success = $false
+            Message = "Error: $_"
+        }
+    }
+}
+
+# Function to handle rename operation from GUI
+function Start-ComputerRename {
+    # Get the current computer name
+    $currentComputer = $computerInput.Text
+    if ([string]::IsNullOrWhiteSpace($currentComputer)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a target computer name first.",
+            "No Computer Specified",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Prompt for new name
+    $newNameForm = New-Object System.Windows.Forms.Form
+    $newNameForm.Text = "Rename Computer"
+    $newNameForm.Size = New-Object System.Drawing.Size(400, 150)
+    $newNameForm.StartPosition = "CenterParent"
+    $newNameForm.FormBorderStyle = "FixedDialog"
+    $newNameForm.MaximizeBox = $false
+    $newNameForm.MinimizeBox = $false
+    $newNameForm.BackColor = $darkBackground
+    $newNameForm.ForeColor = $textColor
+
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = "Enter new computer name:"
+    $label.Location = New-Object System.Drawing.Point(10, 20)
+    $label.Size = New-Object System.Drawing.Size(360, 20)
+    $label.ForeColor = $textColor
+
+    $textBox = New-Object System.Windows.Forms.TextBox
+    $textBox.Location = New-Object System.Drawing.Point(10, 45)
+    $textBox.Size = New-Object System.Drawing.Size(360, 20)
+    $textBox.BackColor = $controlBackground
+    $textBox.ForeColor = $textColor
+
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Text = "OK"
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $okButton.Location = New-Object System.Drawing.Point(200, 75)
+    $okButton.BackColor = $accentColor
+    $okButton.ForeColor = $textColor
+
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Text = "Cancel"
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $cancelButton.Location = New-Object System.Drawing.Point(290, 75)
+    $cancelButton.BackColor = $accentColor
+    $cancelButton.ForeColor = $textColor
+
+    $newNameForm.Controls.AddRange(@($label, $textBox, $okButton, $cancelButton))
+    $newNameForm.AcceptButton = $okButton
+    $newNameForm.CancelButton = $cancelButton
+
+    $result = $newNameForm.ShowDialog()
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $newName = $textBox.Text.Trim()
+
+        # Validate the new name
+        if ($newName -notmatch '^[a-zA-Z0-9-]{1,15}$') {
+            [System.Windows.Forms.MessageBox]::Show(
+                "New computer name can only contain letters, numbers, and hyphens, and must be 1-15 characters long.",
+                "Invalid Name",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
+
+        # Confirm the change
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "Are you sure you want to rename computer '$currentComputer' to '$newName'?`nThis will require a restart to take effect.",
+            "Confirm Rename",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question
+        )
+
+        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Update-Status "Renaming computer $currentComputer to $newName..."
+            
+            try {
+                $result = Rename-RemoteComputer -ComputerName $currentComputer -NewName $newName
+
+                if ($result.Success) {
+                    $outputBox.Text = $result.Message
+                    [System.Windows.Forms.MessageBox]::Show(
+                        $result.Message,
+                        "Success",
+                        [System.Windows.Forms.MessageBoxButtons]::OK,
+                        [System.Windows.Forms.MessageBoxIcon]::Information
+                    )
+
+                    # Offer to restart
+                    $restartResult = [System.Windows.Forms.MessageBox]::Show(
+                        "Would you like to restart the computer now to complete the rename?",
+                        "Restart Required",
+                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                        [System.Windows.Forms.MessageBoxIcon]::Question
+                    )
+
+                    if ($restartResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                        Restart-TargetComputer
+                    }
+                }
+                else {
+                    throw $result.Message
+                }
+            }
+            catch {
+                $outputBox.Text = "Error: $_"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Failed to rename computer: $_",
+                    "Error",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Error
+                )
+            }
+            
+            Update-Status "Ready"
+        }
+    }
+}
+
 # ==========================================
 # Event Handlers
 # ==========================================
@@ -743,6 +1036,9 @@ $btnRestart.Add_Click({ Restart-TargetComputer })
 # Add controls to groups
 $targetGroup.Controls.AddRange(@($computerLabel, $computerInput))
 $buttonGroup.Controls.AddRange(@(
+    $btnPing, $btnSysInfo, $btnUptime, $btnUsers, $btnPrinters, $btnApps,  # Row 1
+    $btnServices, $btnDiskSpace, $btnCompMgmt, $btnOpenShare, $btnLogOff, $btnRestart,  # Row 2
+    $btnPrinterCleanup, $btnRenamePC  # Row 3
     $btnPing, $btnSysInfo, $btnUptime, $btnUsers, $btnPrinters,
     $btnServices, $btnDiskSpace, $btnCompMgmt, $btnOpenShare, $btnApps, $btnLogOff, $btnRestart
 ))
