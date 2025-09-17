@@ -850,6 +850,23 @@ function Rename-RemoteComputer {
             throw "New computer name can only contain letters, numbers, and hyphens, and must be 1-15 characters long."
         }
 
+        # Test connection first
+        if (-not (Test-Connection -ComputerName $ComputerName -Count 1 -Quiet)) {
+            throw "Cannot connect to computer '$ComputerName'"
+        }
+
+        # Get credentials if needed
+        if ($ComputerName -ne $env:COMPUTERNAME -and $ComputerName -ne ".") {
+            if (-not $script:credential) {
+                $script:credential = $host.ui.PromptForCredential("Authentication Required", 
+                    "Enter your administrative credentials", "", "NetBiosUserName")
+                
+                if (-not $script:credential) {
+                    throw "Credentials are required for remote operations"
+                }
+            }
+        }
+
         # Create the rename script block
         $scriptBlock = {
             param($newName)
@@ -859,7 +876,7 @@ function Rename-RemoteComputer {
                 $currentName = $env:COMPUTERNAME
                 
                 # Rename the computer
-                Rename-Computer -NewName $newName -Force -PassThru
+                $result = Rename-Computer -NewName $newName -Force -PassThru -ErrorAction Stop
                 
                 return @{
                     Success = $true
@@ -875,7 +892,115 @@ function Rename-RemoteComputer {
         }
 
         # Execute the rename operation
-        $result = Invoke-Command -ComputerName $ComputerName -ScriptBlock $scriptBlock -ArgumentList $NewName
+        if ($ComputerName -eq $env:COMPUTERNAME -or $ComputerName -eq ".") {
+            # For local computer, still need to run elevated
+            $result = Invoke-Command -ScriptBlock {
+                param($newName)
+                Add-Type -TypeDefinition @"
+                    using System;
+                    using System.Runtime.InteropServices;
+                    
+                    public class ComputerName {
+                        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+                        public static extern bool SetComputerNameEx(int NameType, string lpBuffer);
+                    }
+"@
+                try {
+                    # Get current computer info
+                    $currentName = $env:COMPUTERNAME
+                    
+                    # Try using .NET method first
+                    $renamed = [ComputerName]::SetComputerNameEx(5, $newName)
+                    if (-not $renamed) {
+                        # If .NET method fails, try PowerShell method
+                        Rename-Computer -NewName $newName -Force -PassThru -ErrorAction Stop
+                    }
+                    
+                    return @{
+                        Success = $true
+                        Message = "Computer renamed from $currentName to $newName. A restart is required to apply the change."
+                    }
+                }
+                catch {
+                    return @{
+                        Success = $false
+                        Message = "Failed to rename computer: $_"
+                    }
+                }
+            } -ArgumentList $NewName
+        }
+        else {
+            # For remote computer
+            # Always prompt for fresh domain admin credentials for rename operation
+            $script:credential = Get-Credential -Message "Enter domain admin credentials for renaming $ComputerName" -UserName "$env:USERDOMAIN\$env:USERNAME"
+            if (-not $script:credential) {
+                throw "Credentials are required for remote operations"
+            }
+
+            # Test credential access with explicit domain admin requirements
+            try {
+                Write-Host "Testing connection with credentials..."
+                
+                # First test basic connectivity
+                if (-not (Test-Connection -ComputerName $ComputerName -Count 1 -Quiet)) {
+                    throw "Cannot ping $ComputerName"
+                }
+                
+                # Test admin access by attempting a WMI query
+                try {
+                    $null = Get-WmiObject -Class Win32_ComputerSystem -ComputerName $ComputerName -Credential $script:credential -ErrorAction Stop
+                }
+                catch {
+                    throw "Access denied. Please ensure you are using domain admin credentials."
+                }
+                
+                # Additional verification of admin rights
+                $adminTest = Invoke-Command -ComputerName $ComputerName -Credential $script:credential -ScriptBlock {
+                    ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                } -ErrorAction Stop
+
+                if (-not $adminTest) {
+                    throw "The provided credentials do not have administrative rights on $ComputerName"
+                }
+            }
+            catch {
+                $errorMsg = $_.Exception.Message
+                if ($errorMsg -like "*Access is denied*") {
+                    throw "Access denied. Please ensure you are using domain admin credentials."
+                }
+                elseif ($errorMsg -like "*The user name or password is incorrect*") {
+                    throw "Invalid credentials. Please verify your username and password."
+                }
+                elseif ($errorMsg -like "*Cannot ping*") {
+                    throw $errorMsg
+                }
+                else {
+                    throw "Unable to access ${ComputerName}: ${errorMsg}"
+                }
+            }
+
+            Write-Host "Attempting to rename computer..."
+            try {
+                # Get current computer name first
+                $currentName = Invoke-Command -ComputerName $ComputerName -Credential $script:credential -ScriptBlock {
+                    $env:COMPUTERNAME
+                }
+
+                # Perform the rename operation
+                $null = Rename-Computer -ComputerName $ComputerName -NewName $NewName -DomainCredential $script:credential -Force -PassThru -ErrorAction Stop -Restart:$false
+                
+                $result = @{
+                    Success = $true
+                    Message = "Computer renamed from $currentName to $NewName. A restart is required to apply the change."
+                }
+            }
+            catch {
+                $result = @{
+                    Success = $false
+                    Message = "Failed to rename computer: $_"
+                }
+            }
+        }
 
         return $result
     }
