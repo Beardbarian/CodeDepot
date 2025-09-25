@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.4
+# PowerShell System Management Tool v1.6
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -39,7 +39,7 @@ $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Lig
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.4"
+$form.Text = "PowerShell System Management Tool v1.6"
 $form.Size = New-Object System.Drawing.Size(840, 740)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
@@ -127,30 +127,35 @@ $buttonsPerRow = 6
 # Fixed starting position for left alignment
 $buttonStartX = 20
 
-# Row 1 - System Information and Diagnostics
+# Set row positions
+$row1Y = 20
+$row2Y = $row1Y + $buttonHeight + 12  # 12px spacing between rows
+$row3Y = $row2Y + $buttonHeight + 12
+
+# Row 1 - System Information and Quick Access
 $btnPing = New-Object System.Windows.Forms.Button
 $btnPing.Text = "Ping"
-$btnPing.Location = New-Object System.Drawing.Point($buttonStartX, 20)
+$btnPing.Location = New-Object System.Drawing.Point($buttonStartX, $row1Y)
 $btnPing.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPing
 
-$btnSysInfo = New-Object System.Windows.Forms.Button
-$btnSysInfo.Text = "System Info"
-$btnSysInfo.Location = New-Object System.Drawing.Point(($buttonStartX + $buttonWidth + $buttonSpacing), 20)
-$btnSysInfo.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnSysInfo
-
 $btnUptime = New-Object System.Windows.Forms.Button
 $btnUptime.Text = "Uptime"
-$btnUptime.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 20)
+$btnUptime.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 20)
 $btnUptime.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUptime
 
 $btnUsers = New-Object System.Windows.Forms.Button
 $btnUsers.Text = "User Sessions"
-$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 20)
+$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 20)
 $btnUsers.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUsers
+
+$btnDiskSpace = New-Object System.Windows.Forms.Button
+$btnDiskSpace.Text = "Disk Space"
+$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 20)
+$btnDiskSpace.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnDiskSpace
 
 $btnPrinters = New-Object System.Windows.Forms.Button
 $btnPrinters.Text = "Printers"
@@ -158,61 +163,84 @@ $btnPrinters.Location = New-Object System.Drawing.Point(($buttonStartX + ($butto
 $btnPrinters.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPrinters
 
-$btnApps = New-Object System.Windows.Forms.Button
-$btnApps.Text = "Applications"
-$btnApps.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 20)
-$btnApps.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnApps
+$btnPrinterCleanup = New-Object System.Windows.Forms.Button
+$btnPrinterCleanup.Text = "Clean Printers"
+$btnPrinterCleanup.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 20)
+$btnPrinterCleanup.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnPrinterCleanup
 
-# Row 2 - Management and Control
-$btnServices = New-Object System.Windows.Forms.Button
-$btnServices.Text = "Services"
-$btnServices.Location = New-Object System.Drawing.Point($buttonStartX, 60)
-$btnServices.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnServices
-
-$btnDiskSpace = New-Object System.Windows.Forms.Button
-$btnDiskSpace.Text = "Disk Space"
-$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + $buttonWidth + $buttonSpacing), 60)
-$btnDiskSpace.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnDiskSpace
-
-$btnCompMgmt = New-Object System.Windows.Forms.Button
-$btnCompMgmt.Text = "Computer Mgmt"
-$btnCompMgmt.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 60)
-$btnCompMgmt.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnCompMgmt
+# Row 2 - System Management
+$btnSysInfo = New-Object System.Windows.Forms.Button
+$btnSysInfo.Text = "System Info"
+$btnSysInfo.Location = New-Object System.Drawing.Point($buttonStartX, 60)
+$btnSysInfo.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnSysInfo
 
 $btnOpenShare = New-Object System.Windows.Forms.Button
 $btnOpenShare.Text = "C$ Share"
-$btnOpenShare.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 60)
+$btnOpenShare.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 60)
 $btnOpenShare.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnOpenShare
 
-$btnLogOff = New-Object System.Windows.Forms.Button
-$btnLogOff.Text = "Log Off Users"
-$btnLogOff.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 60)
-$btnLogOff.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnLogOff
+$btnPowerStates = New-Object System.Windows.Forms.Button
+$btnPowerStates.Text = "Power States"
+$btnPowerStates.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 60)
+$btnPowerStates.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnPowerStates
 
-# Row 3 - Maintenance and Cleanup
-$btnPrinterCleanup = New-Object System.Windows.Forms.Button
-$btnPrinterCleanup.Text = "Clean Printers"
-$btnPrinterCleanup.Location = New-Object System.Drawing.Point($buttonStartX, 100)  # Third row Y position
-$btnPrinterCleanup.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-$btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
-Style-Button $btnPrinterCleanup
+$btnApps = New-Object System.Windows.Forms.Button
+$btnApps.Text = "Applications"
+$btnApps.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 60)
+$btnApps.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnApps
+
+$btnServices = New-Object System.Windows.Forms.Button
+$btnServices.Text = "Services"
+$btnServices.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 60)
+$btnServices.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnServices
+
+$btnRestartService = New-Object System.Windows.Forms.Button
+$btnRestartService.Text = "Restart Service"
+$btnRestartService.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 60)
+$btnRestartService.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnRestartService
+
+# Row 3 - System Maintenance and Control
+
+$btnCompMgmt = New-Object System.Windows.Forms.Button
+$btnCompMgmt.Text = "Computer Mgmt"
+$btnCompMgmt.Location = New-Object System.Drawing.Point($buttonStartX, 100)
+$btnCompMgmt.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnCompMgmt
 
 $btnRenamePC = New-Object System.Windows.Forms.Button
 $btnRenamePC.Text = "Rename PC"
-$btnRenamePC.Location = New-Object System.Drawing.Point(($buttonStartX + $buttonWidth + $buttonSpacing), 100)  # Next to Clean Printers
+$btnRenamePC.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 100)
 $btnRenamePC.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-$btnRenamePC.Add_Click({ Start-ComputerRename })
 Style-Button $btnRenamePC
+
+$btnDismRestore = New-Object System.Windows.Forms.Button
+$btnDismRestore.Text = "DISM Restore"
+$btnDismRestore.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 100)
+$btnDismRestore.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnDismRestore
+
+$btnCleanProfiles = New-Object System.Windows.Forms.Button
+$btnCleanProfiles.Text = "Clean User Profiles"
+$btnCleanProfiles.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 100)
+$btnCleanProfiles.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnCleanProfiles
+
+$btnLogOff = New-Object System.Windows.Forms.Button
+$btnLogOff.Text = "Log Off Users"
+$btnLogOff.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 100)
+$btnLogOff.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnLogOff
 
 $btnRestart = New-Object System.Windows.Forms.Button
 $btnRestart.Text = "Restart PC"
-$btnRestart.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 60)
+$btnRestart.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 100)
 $btnRestart.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnRestart
 
@@ -666,6 +694,19 @@ function Get-InstalledApplications {
     if ([string]::IsNullOrWhiteSpace($computerName)) { $computerName = "." }
     
     if (-not (Test-RemoteConnection $computerName)) {
+        Update-Status "Ready"
+        return
+    }
+    
+    # Show warning message
+    $warningResult = [System.Windows.Forms.MessageBox]::Show(
+        "This may take a few minutes, and will appear frozen while collecting application info. Click OK to continue and please wait.",
+        "Please Wait",
+        [System.Windows.Forms.MessageBoxButtons]::OKCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+    
+    if ($warningResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
         Update-Status "Ready"
         return
     }
@@ -1137,6 +1178,345 @@ function Start-ComputerRename {
     }
 }
 
+# Function to run DISM restore health
+function Start-DismRestore {
+    $targetComputer = $computerInput.Text
+    if ([string]::IsNullOrEmpty($targetComputer)) {
+        [System.Windows.Forms.MessageBox]::Show("Please enter a computer name.", "Input Required", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    # Show warning message
+    $warningResult = [System.Windows.Forms.MessageBox]::Show(
+        "A blank window will appear as this runs. This may take a few minutes, and will appear frozen while DISM is running. Click OK to continue and please wait.",
+        "Please Wait",
+        [System.Windows.Forms.MessageBoxButtons]::OKCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+    )
+    
+    if ($warningResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        Update-Status "Ready"
+        return
+    }
+
+    Update-Status "Running DISM restore health on $targetComputer..."
+    $outputBox.Clear()
+    
+    try {
+        $result = Invoke-Command -ComputerName $targetComputer -ScriptBlock {
+            $output = New-Object System.Collections.ArrayList
+            
+            # Start DISM with redirected output
+            $dismProcess = Start-Process -FilePath "DISM.exe" -ArgumentList "/Online /Cleanup-Image /RestoreHealth" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "$env:TEMP\dismout.txt" -RedirectStandardError "$env:TEMP\dismerr.txt"
+            
+            # Read the output files
+            if (Test-Path "$env:TEMP\dismout.txt") {
+                $output.AddRange([System.IO.File]::ReadAllLines("$env:TEMP\dismout.txt"))
+                Remove-Item "$env:TEMP\dismout.txt" -Force
+            }
+            if (Test-Path "$env:TEMP\dismerr.txt") {
+                $errContent = [System.IO.File]::ReadAllLines("$env:TEMP\dismerr.txt")
+                if ($errContent) {
+                    $output.Add("`nErrors:")
+                    $output.AddRange($errContent)
+                }
+                Remove-Item "$env:TEMP\dismerr.txt" -Force
+            }
+            
+            return @{
+                Output = $output
+                ExitCode = $dismProcess.ExitCode
+            }
+        } -ErrorAction Stop
+
+        # Display output
+        foreach ($line in $result.Output) {
+            $outputBox.AppendText("$line`n")
+        }
+
+        if ($result.ExitCode -eq 0) {
+            $outputBox.AppendText("`nDISM restore health completed successfully.`n")
+            Update-Status "DISM restore health completed successfully on $targetComputer"
+        } else {
+            $outputBox.AppendText("`nDISM restore health completed with exit code: $($result.ExitCode)`n")
+            Update-Status "DISM restore health completed with errors on $targetComputer"
+        }
+    }
+    catch {
+        $outputBox.AppendText("Error: $_`n")
+        Update-Status "Error running DISM restore health"
+    }
+}
+
+# Function to show power states
+function Show-PowerStates {
+    $targetComputer = $computerInput.Text
+    if ([string]::IsNullOrEmpty($targetComputer)) {
+        [System.Windows.Forms.MessageBox]::Show("Please enter a computer name.", "Input Required", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+
+    Update-Status "Retrieving power states from $targetComputer..."
+    $outputBox.Clear()
+    
+    try {
+        $powerStates = Invoke-Command -ComputerName $targetComputer -ScriptBlock {
+            $powerCfg = & powercfg /list
+            $powerPlan = & powercfg /query
+            $sleepStates = & powercfg /availablesleepstates
+            return @{
+                PowerCfg = $powerCfg
+                PowerPlan = $powerPlan
+                SleepStates = $sleepStates
+            }
+        } -ErrorAction Stop
+
+        $outputBox.AppendText("=== Current Power Configuration ===`n")
+        $outputBox.AppendText(($powerStates.PowerCfg | Out-String))
+        $outputBox.AppendText("`n=== Available Sleep States ===`n")
+        $outputBox.AppendText(($powerStates.SleepStates | Out-String))
+        $outputBox.AppendText("`n=== Detailed Power Plan Settings ===`n")
+        $outputBox.AppendText(($powerStates.PowerPlan | Out-String))
+        
+        Update-Status "Power states retrieved successfully"
+    }
+    catch {
+        $outputBox.AppendText("Error: $_`n")
+        Update-Status "Error retrieving power states"
+    }
+}
+
+# Function to restart a service
+function Restart-RemoteService {
+    $computerName = $computerInput.Text
+    if ([string]::IsNullOrWhiteSpace($computerName)) { 
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a computer name.",
+            "Input Required",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return 
+    }
+
+    # Prompt for service name
+    $serviceForm = New-Object System.Windows.Forms.Form
+    $serviceForm.Text = "Restart Service"
+    $serviceForm.Size = New-Object System.Drawing.Size(400, 200)
+    $serviceForm.StartPosition = "CenterParent"
+    $serviceForm.FormBorderStyle = "FixedDialog"
+    $serviceForm.MaximizeBox = $false
+    $serviceForm.MinimizeBox = $false
+    $serviceForm.BackColor = $darkBackground
+    $serviceForm.ForeColor = $textColor
+
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = "Enter service name (e.g., spooler, wuauserv):"
+    $label.Location = New-Object System.Drawing.Point(10, 20)
+    $label.Size = New-Object System.Drawing.Size(360, 20)
+    $label.ForeColor = $textColor
+
+    $serviceBox = New-Object System.Windows.Forms.ComboBox
+    $serviceBox.Location = New-Object System.Drawing.Point(10, 45)
+    $serviceBox.Size = New-Object System.Drawing.Size(360, 20)
+    $serviceBox.BackColor = $controlBackground
+    $serviceBox.ForeColor = $textColor
+    $serviceBox.AutoCompleteMode = 'SuggestAppend'
+    $serviceBox.AutoCompleteSource = 'ListItems'
+
+    # Get list of services for autocomplete
+    try {
+        $services = Invoke-Command -ComputerName $computerName -ScriptBlock {
+            Get-Service | Select-Object DisplayName, Name | Sort-Object DisplayName
+        }
+        foreach ($service in $services) {
+            $serviceBox.Items.Add("$($service.DisplayName) ($($service.Name))")
+        }
+    }
+    catch {
+        $outputBox.AppendText("Error getting service list: $_`n")
+    }
+
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Text = "OK"
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $okButton.Location = New-Object System.Drawing.Point(200, 120)
+    $okButton.BackColor = $accentColor
+    $okButton.ForeColor = $textColor
+
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Text = "Cancel"
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $cancelButton.Location = New-Object System.Drawing.Point(290, 120)
+    $cancelButton.BackColor = $accentColor
+    $cancelButton.ForeColor = $textColor
+
+    $serviceForm.Controls.AddRange(@($label, $serviceBox, $okButton, $cancelButton))
+    $serviceForm.AcceptButton = $okButton
+    $serviceForm.CancelButton = $cancelButton
+
+    $result = $serviceForm.ShowDialog()
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $selectedService = $serviceBox.Text
+        if ([string]::IsNullOrWhiteSpace($selectedService)) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "Please enter a service name.",
+                "Input Required",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
+
+        # Extract service name from selection
+        if ($selectedService -match '\((.*?)\)$') {
+            $serviceName = $matches[1]
+        } else {
+            $serviceName = $selectedService
+        }
+
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "Are you sure you want to restart the '$serviceName' service on $computerName?",
+            "Confirm Service Restart",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+
+        if ($confirmResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Update-Status "Restarting $serviceName service on $computerName..."
+            $outputBox.Clear()
+            
+            try {
+                $result = Invoke-Command -ComputerName $computerName -ScriptBlock {
+                    param($svcName)
+                    try {
+                        $service = Get-Service -Name $svcName
+                        $outputBuilder = New-Object System.Text.StringBuilder
+                        
+                        $outputBuilder.AppendLine("Current Status: $($service.Status)")
+                        $outputBuilder.AppendLine("Stopping service...")
+                        $service | Stop-Service -Force -ErrorAction Stop
+                        Start-Sleep -Seconds 2
+                        
+                        $outputBuilder.AppendLine("Starting service...")
+                        $service | Start-Service -ErrorAction Stop
+                        Start-Sleep -Seconds 2
+                        
+                        $service = Get-Service -Name $svcName
+                        $outputBuilder.AppendLine("New Status: $($service.Status)")
+                        
+                        return $outputBuilder.ToString()
+                    }
+                    catch {
+                        throw $_
+                    }
+                } -ArgumentList $serviceName -ErrorAction Stop
+
+                $outputBox.AppendText($result)
+                Update-Status "Service restart completed successfully"
+            }
+            catch {
+                $outputBox.AppendText("Error restarting service: $_`n")
+                Update-Status "Error restarting service"
+            }
+        }
+    }
+}
+
+# Function to clean old user profiles
+function Remove-OldUserProfiles {
+    $computerName = $computerInput.Text
+    if ([string]::IsNullOrWhiteSpace($computerName)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a computer name.",
+            "Input Required",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Show warning message
+    $warningResult = [System.Windows.Forms.MessageBox]::Show(
+        "This will remove user profiles older than 7 days on $computerName.`n`n" +
+        "IMPORTANT:`n" +
+        "- Currently logged in profiles will be skipped`n" +
+        "- Special system profiles will be preserved`n" +
+        "- This action cannot be undone`n`n" +
+        "Do you want to continue?",
+        "Warning - Profile Cleanup",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+
+    if ($warningResult -eq [System.Windows.Forms.DialogResult]::No) {
+        return
+    }
+
+    Update-Status "Scanning for old profiles on $computerName..."
+    $outputBox.Clear()
+
+    try {
+        $result = Invoke-Command -ComputerName $computerName -ScriptBlock {
+            $output = New-Object System.Collections.ArrayList
+            
+            # Get current date and calculate cutoff date (7 days ago)
+            $cutoffDate = (Get-Date).AddDays(-7)
+            
+            # Get all user profiles
+            $profiles = Get-CimInstance -ClassName Win32_UserProfile | 
+                Where-Object { 
+                    -not $_.Special -and                    # Skip special profiles
+                    -not $_.Loaded -and                     # Skip logged-in profiles
+                    $_.LastUseTime -lt $cutoffDate -and     # Older than 7 days
+                    $_.LocalPath -notlike '*systemprofile*' -and
+                    $_.LocalPath -notlike '*ServiceAccount*' -and
+                    $_.LocalPath -notlike '*NetworkService*' -and
+                    $_.LocalPath -notlike '*LocalService*' -and
+                    $_.LocalPath -notlike '*system32*'
+                }
+
+            if (-not $profiles) {
+                $output.Add("No eligible profiles found for removal.")
+                return $output
+            }
+
+            $output.Add("The following profiles will be removed:")
+            $output.Add("=====================================")
+            
+            foreach ($profile in $profiles) {
+                $username = Split-Path $profile.LocalPath -Leaf
+                $lastUse = $profile.LastUseTime
+                $output.Add("Profile: $username")
+                $output.Add("Last Used: $lastUse")
+                $output.Add("Path: $($profile.LocalPath)")
+                
+                try {
+                    $profile | Remove-CimInstance -ErrorAction Stop
+                    $output.Add("Status: Removed successfully")
+                }
+                catch {
+                    $output.Add("Status: Failed to remove - $($_.Exception.Message)")
+                }
+                $output.Add("-------------------------------------")
+            }
+
+            return $output
+        }
+
+        foreach ($line in $result) {
+            $outputBox.AppendText("$line`n")
+        }
+        
+        Update-Status "Profile cleanup completed"
+    }
+    catch {
+        $outputBox.AppendText("Error during profile cleanup: $_`n")
+        Update-Status "Error during profile cleanup"
+    }
+}
+
 # ==========================================
 # Event Handlers
 # ==========================================
@@ -1152,7 +1532,13 @@ $btnCompMgmt.Add_Click({ Open-ComputerManagement })
 $btnOpenShare.Add_Click({ Open-AdminShare })
 $btnApps.Add_Click({ Get-InstalledApplications })
 $btnLogOff.Add_Click({ Invoke-LogOffUsers })
+$btnRestartService.Add_Click({ Restart-RemoteService })
+$btnCleanProfiles.Add_Click({ Remove-OldUserProfiles })
 $btnRestart.Add_Click({ Restart-TargetComputer })
+$btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
+$btnRenamePC.Add_Click({ Start-ComputerRename })
+$btnDismRestore.Add_Click({ Start-DismRestore })
+$btnPowerStates.Add_Click({ Show-PowerStates })
 
 # ==========================================
 # Form Assembly and Display
@@ -1161,11 +1547,9 @@ $btnRestart.Add_Click({ Restart-TargetComputer })
 # Add controls to groups
 $targetGroup.Controls.AddRange(@($computerLabel, $computerInput))
 $buttonGroup.Controls.AddRange(@(
-    $btnPing, $btnSysInfo, $btnUptime, $btnUsers, $btnPrinters, $btnApps,  # Row 1
-    $btnServices, $btnDiskSpace, $btnCompMgmt, $btnOpenShare, $btnLogOff, $btnRestart,  # Row 2
-    $btnPrinterCleanup, $btnRenamePC  # Row 3
-    $btnPing, $btnSysInfo, $btnUptime, $btnUsers, $btnPrinters,
-    $btnServices, $btnDiskSpace, $btnCompMgmt, $btnOpenShare, $btnApps, $btnLogOff, $btnRestart
+    $btnPing, $btnUptime, $btnUsers, $btnDiskSpace, $btnPrinters, $btnPrinterCleanup,  # Row 1
+    $btnSysInfo, $btnOpenShare, $btnPowerStates, $btnApps, $btnServices, $btnRestartService,  # Row 2
+    $btnCompMgmt, $btnRenamePC, $btnDismRestore, $btnCleanProfiles, $btnLogOff, $btnRestart  # Row 3
 ))
 $outputGroup.Controls.Add($outputBox)
 
