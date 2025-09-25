@@ -1521,24 +1521,27 @@ function Remove-OldUserProfiles {
 # Event Handlers
 # ==========================================
 
+# Row 1
 $btnPing.Add_Click({ Test-ComputerPing })
-$btnSysInfo.Add_Click({ Get-SystemInformation })
 $btnUptime.Add_Click({ Get-ComputerUptime })
 $btnUsers.Add_Click({ Get-UserSessions })
-$btnPrinters.Add_Click({ Get-PrinterInfo })
-$btnServices.Add_Click({ Get-RunningServices })
 $btnDiskSpace.Add_Click({ Get-DiskSpaceInfo })
-$btnCompMgmt.Add_Click({ Open-ComputerManagement })
-$btnOpenShare.Add_Click({ Open-AdminShare })
-$btnApps.Add_Click({ Get-InstalledApplications })
-$btnLogOff.Add_Click({ Invoke-LogOffUsers })
-$btnRestartService.Add_Click({ Restart-RemoteService })
-$btnCleanProfiles.Add_Click({ Remove-OldUserProfiles })
-$btnRestart.Add_Click({ Restart-TargetComputer })
+$btnPrinters.Add_Click({ Get-PrinterInfo })
 $btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
+# Row 2
+$btnSysInfo.Add_Click({ Get-SystemInformation })
+$btnOpenShare.Add_Click({ Open-AdminShare })
+$btnPowerStates.Add_Click({ Show-PowerStates })
+$btnApps.Add_Click({ Get-InstalledApplications })
+$btnServices.Add_Click({ Get-RunningServices })
+$btnRestartService.Add_Click({ Restart-RemoteService })
+# Row 3
+$btnCompMgmt.Add_Click({ Open-ComputerManagement })
 $btnRenamePC.Add_Click({ Start-ComputerRename })
 $btnDismRestore.Add_Click({ Start-DismRestore })
-$btnPowerStates.Add_Click({ Show-PowerStates })
+$btnCleanProfiles.Add_Click({ Remove-OldUserProfiles })
+$btnLogOff.Add_Click({ Invoke-LogOffUsers })
+$btnRestart.Add_Click({ Restart-TargetComputer })
 
 # ==========================================
 # Form Assembly and Display
