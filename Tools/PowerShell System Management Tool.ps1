@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.7
+# Powershell System Management Tool v1.8
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -39,8 +39,8 @@ $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Lig
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.7"
-$form.Size = New-Object System.Drawing.Size(840, 740)
+$form.Text = "Powershell System Management Tool v1.8"
+$form.Size = New-Object System.Drawing.Size(858, 740)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $form.BackColor = $darkBackground
@@ -137,7 +137,7 @@ function Style-Button {
 }
 
 # Calculate button positions
-$margin = 20
+$margin = 10
 $buttonWidth = 120
 $buttonHeight = 32
 $buttonSpacing = 12
