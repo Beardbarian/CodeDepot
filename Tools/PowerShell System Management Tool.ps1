@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.7
+# PowerShell System Management Tool v1.8
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -37,10 +37,14 @@ $accentColor = [System.Drawing.ColorTranslator]::FromHtml("#007acc")       # Blu
 $textColor = [System.Drawing.ColorTranslator]::FromHtml("#ffffff")         # White text
 $subTextColor = [System.Drawing.ColorTranslator]::FromHtml("#cccccc")      # Light gray text
 
+# Layout variables
+$margin = 10
+$groupWidth = 880
+
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.7"
-$form.Size = New-Object System.Drawing.Size(840, 740)
+$form.Text = "PowerShell System Management Tool v1.8"
+$form.ClientSize = New-Object System.Drawing.Size(($groupWidth + $margin * 2), 705)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $form.BackColor = $darkBackground
@@ -73,8 +77,9 @@ $form.Add_FormClosing({
 # Target Computer Input Group
 $targetGroup = New-Object System.Windows.Forms.GroupBox
 $targetGroup.Text = "Target Computer"
-$targetGroup.Location = New-Object System.Drawing.Point($margin, 15)
-$targetGroup.Size = New-Object System.Drawing.Size(822, 55)
+$targetGroup.Location = New-Object System.Drawing.Point($margin, 10)
+$targetGroup.Size = New-Object System.Drawing.Size($groupWidth, 55)
+$targetGroup.Margin = New-Object System.Windows.Forms.Padding(0)
 $targetGroup.BackColor = $panelBackground
 $targetGroup.ForeColor = $textColor
 
@@ -100,23 +105,19 @@ $computerInput.Add_TextChanged({
 # Output Area
 $outputGroup = New-Object System.Windows.Forms.GroupBox
 $outputGroup.Text = "Output"
-$outputGroup.Location = New-Object System.Drawing.Point($margin, 230)
-$outputGroup.Size = New-Object System.Drawing.Size(822, 440)
+$outputGroup.Location = New-Object System.Drawing.Point($margin, 235)
+$outputGroup.Size = New-Object System.Drawing.Size($groupWidth, 440)  # Reduced height to make room for status bar
 $outputGroup.BackColor = $panelBackground
 $outputGroup.ForeColor = $textColor
+$outputGroup.Padding = New-Object System.Windows.Forms.Padding(10, 20, 10, 10)
 
 # Action Buttons Group
 $buttonGroup = New-Object System.Windows.Forms.GroupBox
 $buttonGroup.Text = "Actions"
-$buttonGroup.Location = New-Object System.Drawing.Point($margin, 80)
-$buttonGroup.Size = New-Object System.Drawing.Size(822, 140)  # Increased height for third row
+$buttonGroup.Location = New-Object System.Drawing.Point($margin, 75)
+$buttonGroup.Size = New-Object System.Drawing.Size($groupWidth, 150)  # Increased height for better spacing
 $buttonGroup.BackColor = $panelBackground
 $buttonGroup.ForeColor = $textColor
-
-# Button row positions
-$row1Y = 20
-$row2Y = $row1Y + $buttonHeight + 12  # 12px spacing between rows
-$row3Y = $row2Y + $buttonHeight + 12
 
 # Button styling function
 function Style-Button {
@@ -136,20 +137,20 @@ function Style-Button {
     })
 }
 
-# Calculate button positions
-$margin = 20
-$buttonWidth = 120
+# Layout settings
+$buttonWidth = 130
 $buttonHeight = 32
-$buttonSpacing = 12
+$buttonSpacing = 10
 $buttonsPerRow = 6
 
-# Fixed starting position for left alignment
-$buttonStartX = 20
+# Calculate button positions for centering
+$totalButtonWidth = ($buttonWidth * $buttonsPerRow) + ($buttonSpacing * ($buttonsPerRow - 1))
+$buttonStartX = [Math]::Floor(($groupWidth - $totalButtonWidth) / 2)
 
 # Set row positions
 $row1Y = 20
-$row2Y = $row1Y + $buttonHeight + 12  # 12px spacing between rows
-$row3Y = $row2Y + $buttonHeight + 12
+$row2Y = $row1Y + $buttonHeight + 10
+$row3Y = $row2Y + $buttonHeight + 10
 
 # Row 1 - System Information and Quick Access
 $btnPing = New-Object System.Windows.Forms.Button
@@ -160,68 +161,68 @@ Style-Button $btnPing
 
 $btnUptime = New-Object System.Windows.Forms.Button
 $btnUptime.Text = "Uptime"
-$btnUptime.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 20)
+$btnUptime.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), $row1Y)
 $btnUptime.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUptime
 
 $btnUsers = New-Object System.Windows.Forms.Button
 $btnUsers.Text = "User Sessions"
-$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 20)
+$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row1Y)
 $btnUsers.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUsers
 
 $btnDiskSpace = New-Object System.Windows.Forms.Button
 $btnDiskSpace.Text = "Disk Space"
-$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 20)
+$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), $row1Y)
 $btnDiskSpace.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnDiskSpace
 
 $btnPrinters = New-Object System.Windows.Forms.Button
 $btnPrinters.Text = "Printers"
-$btnPrinters.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 20)
+$btnPrinters.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), $row1Y)
 $btnPrinters.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPrinters
 
 $btnPrinterCleanup = New-Object System.Windows.Forms.Button
 $btnPrinterCleanup.Text = "Clean Printers"
-$btnPrinterCleanup.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 20)
+$btnPrinterCleanup.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), $row1Y)
 $btnPrinterCleanup.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPrinterCleanup
 
 # Row 2 - System Management
 $btnSysInfo = New-Object System.Windows.Forms.Button
 $btnSysInfo.Text = "System Info"
-$btnSysInfo.Location = New-Object System.Drawing.Point($buttonStartX, 60)
+$btnSysInfo.Location = New-Object System.Drawing.Point($buttonStartX, $row2Y)
 $btnSysInfo.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnSysInfo
 
 $btnOpenShare = New-Object System.Windows.Forms.Button
 $btnOpenShare.Text = "C$ Share"
-$btnOpenShare.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 60)
+$btnOpenShare.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), $row2Y)
 $btnOpenShare.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnOpenShare
 
 $btnPowerStates = New-Object System.Windows.Forms.Button
 $btnPowerStates.Text = "Power States"
-$btnPowerStates.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 60)
+$btnPowerStates.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row2Y)
 $btnPowerStates.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPowerStates
 
 $btnApps = New-Object System.Windows.Forms.Button
 $btnApps.Text = "Applications"
-$btnApps.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 60)
+$btnApps.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), $row2Y)
 $btnApps.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnApps
 
 $btnServices = New-Object System.Windows.Forms.Button
 $btnServices.Text = "Services"
-$btnServices.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 60)
+$btnServices.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), $row2Y)
 $btnServices.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnServices
 
 $btnRestartService = New-Object System.Windows.Forms.Button
 $btnRestartService.Text = "Restart Service"
-$btnRestartService.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 60)
+$btnRestartService.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), $row2Y)
 $btnRestartService.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnRestartService
 
@@ -229,37 +230,37 @@ Style-Button $btnRestartService
 
 $btnCompMgmt = New-Object System.Windows.Forms.Button
 $btnCompMgmt.Text = "Computer Mgmt"
-$btnCompMgmt.Location = New-Object System.Drawing.Point($buttonStartX, 100)
+$btnCompMgmt.Location = New-Object System.Drawing.Point($buttonStartX, $row3Y)
 $btnCompMgmt.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnCompMgmt
 
 $btnRenamePC = New-Object System.Windows.Forms.Button
 $btnRenamePC.Text = "Rename PC"
-$btnRenamePC.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), 100)
+$btnRenamePC.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), $row3Y)
 $btnRenamePC.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnRenamePC
 
 $btnDismRestore = New-Object System.Windows.Forms.Button
 $btnDismRestore.Text = "DISM Restore"
-$btnDismRestore.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), 100)
+$btnDismRestore.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row3Y)
 $btnDismRestore.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnDismRestore
 
 $btnCleanProfiles = New-Object System.Windows.Forms.Button
 $btnCleanProfiles.Text = "Clean User Profiles"
-$btnCleanProfiles.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), 100)
+$btnCleanProfiles.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), $row3Y)
 $btnCleanProfiles.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnCleanProfiles
 
 $btnLogOff = New-Object System.Windows.Forms.Button
 $btnLogOff.Text = "Log Off Users"
-$btnLogOff.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), 100)
+$btnLogOff.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), $row3Y)
 $btnLogOff.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnLogOff
 
 $btnRestart = New-Object System.Windows.Forms.Button
 $btnRestart.Text = "Restart PC"
-$btnRestart.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), 100)
+$btnRestart.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 5), $row3Y)
 $btnRestart.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnRestart
 
@@ -267,21 +268,27 @@ Style-Button $btnRestart
 $totalButtonsWidth = ($buttonWidth * 6) + ($buttonSpacing * 5)
 
 $outputBox = New-Object System.Windows.Forms.RichTextBox
-$outputBox.Location = New-Object System.Drawing.Point($buttonStartX, 20)
-$outputBox.Size = New-Object System.Drawing.Size($totalButtonsWidth, 410)
+$outputBox.Location = New-Object System.Drawing.Point(20, 20)
+$outputBox.Size = New-Object System.Drawing.Size(840, 410)
 $outputBox.Font = New-Object System.Drawing.Font("Consolas", 10)
 $outputBox.BackColor = [System.Drawing.Color]::Black
 $outputBox.ForeColor = [System.Drawing.Color]::White
 $outputBox.ReadOnly = $true
 $outputBox.MultiLine = $true
 $outputBox.ScrollBars = "Vertical"
+$outputBox.Margin = New-Object System.Windows.Forms.Padding(0)
 
 # Status Bar with dark theme
 $statusStrip = New-Object System.Windows.Forms.StatusStrip
 $statusStrip.BackColor = $panelBackground
+$statusStrip.SizingGrip = $false
+$statusStrip.Dock = [System.Windows.Forms.DockStyle]::Bottom
+
 $statusLabel = New-Object System.Windows.Forms.ToolStripStatusLabel
 $statusLabel.Text = "Ready"
 $statusLabel.ForeColor = $subTextColor
+$statusLabel.Spring = $true  # Makes the label expand to fill space
+$statusLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
 $statusStrip.Items.Add($statusLabel)
 
 # ==========================================
@@ -1575,8 +1582,8 @@ $buttonGroup.Controls.AddRange(@(
 ))
 $outputGroup.Controls.Add($outputBox)
 
-# Add groups to form
+# Add all controls to form
 $form.Controls.AddRange(@($targetGroup, $buttonGroup, $outputGroup, $statusStrip))
 
 # Show the form
-$form.ShowDialog()
+[void]$form.ShowDialog()
