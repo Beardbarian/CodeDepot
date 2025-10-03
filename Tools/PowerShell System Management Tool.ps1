@@ -1,4 +1,4 @@
-# PowerShell System Management Tool v1.8
+# PowerShell System Management Tool v1.9
 
 # Check if running as administrator and self-elevate if needed
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -43,7 +43,7 @@ $groupWidth = 880
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.8"
+$form.Text = "PowerShell System Management Tool v1.9"
 $form.ClientSize = New-Object System.Drawing.Size(($groupWidth + $margin * 2), 705)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
@@ -159,29 +159,29 @@ $btnPing.Location = New-Object System.Drawing.Point($buttonStartX, $row1Y)
 $btnPing.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPing
 
-$btnUptime = New-Object System.Windows.Forms.Button
-$btnUptime.Text = "Uptime"
-$btnUptime.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), $row1Y)
-$btnUptime.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnUptime
-
 $btnUsers = New-Object System.Windows.Forms.Button
 $btnUsers.Text = "User Sessions"
-$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row1Y)
+$btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing)), $row1Y)
 $btnUsers.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUsers
 
 $btnDiskSpace = New-Object System.Windows.Forms.Button
 $btnDiskSpace.Text = "Disk Space"
-$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), $row1Y)
+$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row1Y)
 $btnDiskSpace.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnDiskSpace
 
 $btnPrinters = New-Object System.Windows.Forms.Button
 $btnPrinters.Text = "Printers"
-$btnPrinters.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), $row1Y)
+$btnPrinters.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 3), $row1Y)
 $btnPrinters.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnPrinters
+
+$btnPrinterMgmt = New-Object System.Windows.Forms.Button
+$btnPrinterMgmt.Text = "Add/Remove Printer"
+$btnPrinterMgmt.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 4), $row1Y)
+$btnPrinterMgmt.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnPrinterMgmt
 
 $btnPrinterCleanup = New-Object System.Windows.Forms.Button
 $btnPrinterCleanup.Text = "Clean Printers"
@@ -227,7 +227,6 @@ $btnRestartService.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHe
 Style-Button $btnRestartService
 
 # Row 3 - System Maintenance and Control
-
 $btnCompMgmt = New-Object System.Windows.Forms.Button
 $btnCompMgmt.Text = "Computer Mgmt"
 $btnCompMgmt.Location = New-Object System.Drawing.Point($buttonStartX, $row3Y)
@@ -364,17 +363,28 @@ function Get-SystemInformation {
             $cs = Get-CimInstance Win32_ComputerSystem
             $os = Get-CimInstance Win32_OperatingSystem
             $proc = Get-CimInstance Win32_Processor
+            $bios = Get-CimInstance Win32_BIOS
+            
+            # Calculate uptime
+            $uptime = (Get-Date) - $os.LastBootUpTime
+            $uptimeString = "{0} days, {1} hours, {2} minutes" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
             
             "SYSTEM INFORMATION`n==================`n"
-            "Computer Name : $env:COMPUTERNAME"
-            "OS Version    : $($os.Caption)"
-            "OS Build      : $($os.BuildNumber)"
-            "Manufacturer  : $($cs.Manufacturer)"
-            "Model        : $($cs.Model)"
-            "Processor    : $($proc.Name)"
-            "Memory (GB)  : $([math]::Round($cs.TotalPhysicalMemory/1GB, 2))"
-            "Free Mem(GB) : $([math]::Round($os.FreePhysicalMemory/1MB, 2))"
-            "Last Boot    : $($os.LastBootUpTime)"
+            "Computer Name    : $env:COMPUTERNAME"
+            "OS Version       : $($os.Caption)"
+            "OS Build         : $($os.BuildNumber)"
+            "OS Architecture  : $($os.OSArchitecture)"
+            "Manufacturer     : $($cs.Manufacturer)"
+            "Model            : $($cs.Model)"
+            "Serial Number    : $($bios.SerialNumber)"
+            "BIOS Version     : $($bios.SMBIOSBIOSVersion)"
+            "Processor       : $($proc.Name)"
+            "CPU Cores       : $($proc.NumberOfCores)"
+            "CPU Threads     : $($proc.NumberOfLogicalProcessors)"
+            "Memory (GB)     : $([math]::Round($cs.TotalPhysicalMemory/1GB, 2))"
+            "Free Memory(GB) : $([math]::Round($os.FreePhysicalMemory/1MB, 2))"
+            "Last Boot Time  : $($os.LastBootUpTime)"
+            "System Uptime   : $uptimeString"
         }
         
         $result = Invoke-Command -scriptBlock $script -computerName $computerName
@@ -803,32 +813,48 @@ function Remove-NetworkPrintersAndPorts {
 
     try {
         $script = {
-            # Get all network printers
-            $networkPrinters = Get-WmiObject Win32_Printer | Where-Object { $_.Network -eq $true }
+            Write-Host "Starting printer cleanup..."
+            
+            # Get all network printers except SecurePrint
+            $networkPrinters = Get-Printer | Where-Object { 
+                ($_.Type -eq "Connection" -or $_.PortName -like "\\*" -or $_.PortName -like "IP_*" -or $_.PortName -match "^PB.*\d+$") -and 
+                $_.Name -ne "SecurePrint" -and 
+                $_.Name -ne "Microsoft Print to PDF" -and 
+                $_.Name -ne "Microsoft XPS Document Writer" -and
+                $_.Name -ne "Midmark PDF Converter"
+            }
+            
+            Write-Host "`nFound $($networkPrinters.Count) network printers to remove."
             
             # Remove each network printer
             foreach ($printer in $networkPrinters) {
                 try {
-                    $printer.Delete()
-                    Write-Host "Removed printer: $($printer.Name)"
+                    Write-Host "Removing printer: $($printer.Name)"
+                    Remove-Printer -Name $printer.Name -ErrorAction Stop
+                    Write-Host "Successfully removed printer: $($printer.Name)"
                 }
                 catch {
                     Write-Warning "Failed to remove printer $($printer.Name): $_"
                 }
             }
 
-            # Get all printer ports
-            $ports = Get-WmiObject Win32_TCPIPPrinterPort
-
-            # Get ports that are actually in use by local printers
-            $usedPorts = (Get-WmiObject Win32_Printer | Where-Object { $_.Network -eq $false }).PortName
-
-            # Remove unused printer ports
+            # Get all ports
+            $ports = Get-PrinterPort
+            
+            # Get printers to check which ports are in use
+            $activePrinters = Get-Printer
+            $usedPorts = $activePrinters | Select-Object -ExpandProperty PortName
+            
+            Write-Host "`nCleaning up unused printer ports..."
+            
+            # Remove unused ports (skip standard ports and SecurePrint port)
+            $standardPorts = @("FILE:", "LPT1:", "LPT2:", "LPT3:", "COM1:", "COM2:", "COM3:", "COM4:", "PORTPROMPT:", "NUL:", "\\khnsecureprint\SecurePrint")
             foreach ($port in $ports) {
-                if ($usedPorts -notcontains $port.Name) {
+                if ($port.Name -notin $standardPorts -and $port.Name -notin $usedPorts) {
                     try {
-                        $port.Delete()
-                        Write-Host "Removed unused port: $($port.Name)"
+                        Write-Host "Removing unused port: $($port.Name)"
+                        Remove-PrinterPort -Name $port.Name -ErrorAction Stop
+                        Write-Host "Successfully removed port: $($port.Name)"
                     }
                     catch {
                         Write-Warning "Failed to remove port $($port.Name): $_"
@@ -836,6 +862,7 @@ function Remove-NetworkPrintersAndPorts {
                 }
             }
 
+            Write-Host "`nCleanup completed."
             return $true
         }
 
@@ -1543,16 +1570,248 @@ function Remove-OldUserProfiles {
     }
 }
 
+# Function to manage printers
+function Manage-PrinterSetup {
+    $computerName = $computerInput.Text
+    if ([string]::IsNullOrWhiteSpace($computerName)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a computer name first.",
+            "No Computer Specified",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+    
+    if (-not (Test-RemoteConnection $computerName)) {
+        Update-Status "Ready"
+        return
+    }
+
+    # First form - Choose operation
+    $choiceForm = New-Object System.Windows.Forms.Form
+    $choiceForm.Text = "Printer Management - Select Operation"
+    $choiceForm.Size = New-Object System.Drawing.Size(300, 150)
+    $choiceForm.StartPosition = "CenterParent"
+    $choiceForm.FormBorderStyle = "FixedDialog"
+    $choiceForm.MaximizeBox = $false
+    $choiceForm.MinimizeBox = $false
+    $choiceForm.BackColor = $darkBackground
+    $choiceForm.ForeColor = $textColor
+
+    $addButton = New-Object System.Windows.Forms.Button
+    $addButton.Location = New-Object System.Drawing.Point(20, 20)
+    $addButton.Size = New-Object System.Drawing.Size(240, 30)
+    $addButton.Text = "Add Printer"
+    $addButton.BackColor = $accentColor
+    $addButton.ForeColor = $textColor
+    $addButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $addButton.DialogResult = [System.Windows.Forms.DialogResult]::Yes
+
+    $removeButton = New-Object System.Windows.Forms.Button
+    $removeButton.Location = New-Object System.Drawing.Point(20, 60)
+    $removeButton.Size = New-Object System.Drawing.Size(240, 30)
+    $removeButton.Text = "Remove Printer"
+    $removeButton.BackColor = $accentColor
+    $removeButton.ForeColor = $textColor
+    $removeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $removeButton.DialogResult = [System.Windows.Forms.DialogResult]::No
+
+    $choiceForm.Controls.AddRange(@($addButton, $removeButton))
+    $choiceForm.AcceptButton = $addButton
+    $choiceForm.CancelButton = $removeButton
+
+    $choice = $choiceForm.ShowDialog()
+    $choiceForm.Dispose()
+
+    if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+        # Add Printer Form
+        $addForm = New-Object System.Windows.Forms.Form
+        $addForm.Text = "Add Printer"
+        $addForm.Size = New-Object System.Drawing.Size(400, 300)
+        $addForm.StartPosition = "CenterParent"
+        $addForm.FormBorderStyle = "FixedDialog"
+        $addForm.MaximizeBox = $false
+        $addForm.MinimizeBox = $false
+        $addForm.BackColor = $darkBackground
+        $addForm.ForeColor = $textColor
+
+        # Printer Name
+        $nameLabel = New-Object System.Windows.Forms.Label
+        $nameLabel.Text = "Printer Name:"
+        $nameLabel.Location = New-Object System.Drawing.Point(20, 20)
+        $nameLabel.AutoSize = $true
+        $nameLabel.ForeColor = $textColor
+
+        $nameTextBox = New-Object System.Windows.Forms.TextBox
+        $nameTextBox.Location = New-Object System.Drawing.Point(20, 45)
+        $nameTextBox.Size = New-Object System.Drawing.Size(340, 25)
+        $nameTextBox.BackColor = $controlBackground
+        $nameTextBox.ForeColor = $textColor
+
+        # Port/IP
+        $portLabel = New-Object System.Windows.Forms.Label
+        $portLabel.Text = "Port/IP Address:"
+        $portLabel.Location = New-Object System.Drawing.Point(20, 80)
+        $portLabel.AutoSize = $true
+        $portLabel.ForeColor = $textColor
+
+        $portTextBox = New-Object System.Windows.Forms.TextBox
+        $portTextBox.Location = New-Object System.Drawing.Point(20, 105)
+        $portTextBox.Size = New-Object System.Drawing.Size(340, 25)
+        $portTextBox.BackColor = $controlBackground
+        $portTextBox.ForeColor = $textColor
+
+        # Driver
+        $driverLabel = New-Object System.Windows.Forms.Label
+        $driverLabel.Text = "Select Driver:"
+        $driverLabel.Location = New-Object System.Drawing.Point(20, 140)
+        $driverLabel.AutoSize = $true
+        $driverLabel.ForeColor = $textColor
+
+        $driverCombo = New-Object System.Windows.Forms.ComboBox
+        $driverCombo.Location = New-Object System.Drawing.Point(20, 165)
+        $driverCombo.Size = New-Object System.Drawing.Size(340, 25)
+        $driverCombo.BackColor = $controlBackground
+        $driverCombo.ForeColor = $textColor
+        $driverCombo.DropDownStyle = "DropDownList"
+
+        # Get installed drivers
+        try {
+            $drivers = Invoke-Command -ComputerName $computerName -ScriptBlock {
+                Get-PrinterDriver | Select-Object -ExpandProperty Name
+            }
+            $driverCombo.Items.AddRange($drivers)
+            if ($driverCombo.Items.Count -gt 0) {
+                $driverCombo.SelectedIndex = 0
+            }
+        }
+        catch {
+            $outputBox.Text = "Error getting printer drivers: $_"
+            return
+        }
+
+        $okButton = New-Object System.Windows.Forms.Button
+        $okButton.Location = New-Object System.Drawing.Point(20, 210)
+        $okButton.Size = New-Object System.Drawing.Size(340, 30)
+        $okButton.Text = "Add Printer"
+        $okButton.BackColor = $accentColor
+        $okButton.ForeColor = $textColor
+        $okButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+
+        $addForm.Controls.AddRange(@(
+            $nameLabel, $nameTextBox,
+            $portLabel, $portTextBox,
+            $driverLabel, $driverCombo,
+            $okButton
+        ))
+        $addForm.AcceptButton = $okButton
+
+        $result = $addForm.ShowDialog()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            try {
+                if ([string]::IsNullOrWhiteSpace($nameTextBox.Text) -or 
+                    [string]::IsNullOrWhiteSpace($portTextBox.Text)) {
+                    throw "Please fill in all fields"
+                }
+
+                $cmdResult = Invoke-Command -ComputerName $computerName -ScriptBlock {
+                    param($name, $portName, $driverName)
+                    try {
+                        if (-not (Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue)) {
+                            Add-PrinterPort -Name $portName -PrinterHostAddress $portName -ErrorAction Stop
+                        }
+                        Add-Printer -Name $name -DriverName $driverName -PortName $portName -ErrorAction Stop
+                    }
+                    catch {
+                        throw $_
+                    }
+                } -ArgumentList $nameTextBox.Text, $portTextBox.Text, $driverCombo.SelectedItem
+
+                $outputBox.Text = $cmdResult
+            }
+            catch {
+                $outputBox.Text = "Error: $_"
+            }
+        }
+        $addForm.Dispose()
+    }
+    elseif ($choice -eq [System.Windows.Forms.DialogResult]::No) {
+        # Remove Printer Form
+        $removeForm = New-Object System.Windows.Forms.Form
+        $removeForm.Text = "Remove Printer"
+        $removeForm.Size = New-Object System.Drawing.Size(400, 150)
+        $removeForm.StartPosition = "CenterParent"
+        $removeForm.FormBorderStyle = "FixedDialog"
+        $removeForm.MaximizeBox = $false
+        $removeForm.MinimizeBox = $false
+        $removeForm.BackColor = $darkBackground
+        $removeForm.ForeColor = $textColor
+
+        $nameLabel = New-Object System.Windows.Forms.Label
+        $nameLabel.Text = "Printer Name:"
+        $nameLabel.Location = New-Object System.Drawing.Point(20, 20)
+        $nameLabel.AutoSize = $true
+        $nameLabel.ForeColor = $textColor
+
+        $nameTextBox = New-Object System.Windows.Forms.TextBox
+        $nameTextBox.Location = New-Object System.Drawing.Point(20, 45)
+        $nameTextBox.Size = New-Object System.Drawing.Size(340, 25)
+        $nameTextBox.BackColor = $controlBackground
+        $nameTextBox.ForeColor = $textColor
+
+        $okButton = New-Object System.Windows.Forms.Button
+        $okButton.Location = New-Object System.Drawing.Point(20, 80)
+        $okButton.Size = New-Object System.Drawing.Size(340, 30)
+        $okButton.Text = "Remove Printer"
+        $okButton.BackColor = $accentColor
+        $okButton.ForeColor = $textColor
+        $okButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+
+        $removeForm.Controls.AddRange(@($nameLabel, $nameTextBox, $okButton))
+        $removeForm.AcceptButton = $okButton
+
+        $result = $removeForm.ShowDialog()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            try {
+                if ([string]::IsNullOrWhiteSpace($nameTextBox.Text)) {
+                    throw "Please enter a printer name"
+                }
+
+                $cmdResult = Invoke-Command -ComputerName $computerName -ScriptBlock {
+                    param($name)
+                    try {
+                        Remove-Printer -Name $name -ErrorAction Stop
+                    }
+                    catch {
+                        throw $_
+                    }
+                } -ArgumentList $nameTextBox.Text
+
+                $outputBox.Text = $cmdResult
+            }
+            catch {
+                $outputBox.Text = "Error: $_"
+            }
+        }
+        $removeForm.Dispose()
+    }
+
+    Update-Status "Ready"
+}
+
 # ==========================================
 # Event Handlers
 # ==========================================
 
 # Row 1
 $btnPing.Add_Click({ Test-ComputerPing })
-$btnUptime.Add_Click({ Get-ComputerUptime })
 $btnUsers.Add_Click({ Get-UserSessions })
 $btnDiskSpace.Add_Click({ Get-DiskSpaceInfo })
 $btnPrinters.Add_Click({ Get-PrinterInfo })
+$btnPrinterMgmt.Add_Click({ Manage-PrinterSetup })
 $btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
 # Row 2
 $btnSysInfo.Add_Click({ Get-SystemInformation })
@@ -1576,7 +1835,7 @@ $btnRestart.Add_Click({ Restart-TargetComputer })
 # Add controls to groups
 $targetGroup.Controls.AddRange(@($computerLabel, $computerInput))
 $buttonGroup.Controls.AddRange(@(
-    $btnPing, $btnUptime, $btnUsers, $btnDiskSpace, $btnPrinters, $btnPrinterCleanup,  # Row 1
+    $btnPing, $btnUsers, $btnDiskSpace, $btnPrinters, $btnPrinterMgmt, $btnPrinterCleanup,  # Row 1
     $btnSysInfo, $btnOpenShare, $btnPowerStates, $btnApps, $btnServices, $btnRestartService,  # Row 2
     $btnCompMgmt, $btnRenamePC, $btnDismRestore, $btnCleanProfiles, $btnLogOff, $btnRestart  # Row 3
 ))
