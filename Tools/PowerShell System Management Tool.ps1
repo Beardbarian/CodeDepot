@@ -1,9 +1,25 @@
-# PowerShell System Management Tool v1.9
+# Powershell System Management Tool v2.0
 
-# Check if running as administrator and self-elevate if needed
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# Function to test full admin rights by attempting a privileged operation
+function Test-FullAdminRights {
+    try {
+        $key = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+        $null = Get-ItemProperty -Path $key -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+# Check if running as administrator and handle elevation/credentials
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 $adminRole = [Security.Principal.WindowsBuiltInRole]::Administrator
+$hasFullRights = Test-FullAdminRights
 
 if (-not $principal.IsInRole($adminRole)) {
     try {
@@ -21,9 +37,36 @@ if (-not $principal.IsInRole($adminRole)) {
         exit
     }
 }
+elseif (-not $hasFullRights) {
+    $credential = $null
+    try {
+        $credential = Get-Credential -Message "Your current account has limited privileges. Please enter credentials with full administrative rights."
+        
+        if ($null -eq $credential) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "Full administrative credentials are required to use this tool.",
+                "Full Admin Rights Required",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            exit
+        }
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+        # Relaunch script with full admin credentials
+        $scriptPath = $MyInvocation.MyCommand.Path
+        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -Credential $credential -WorkingDirectory $PSScriptRoot
+        exit
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Failed to authenticate with the provided credentials. Please try again with valid administrative credentials.",
+            "Authentication Failed",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+        exit
+    }
+}
 
 # ==========================================
 # Form Setup and Styling
@@ -43,7 +86,7 @@ $groupWidth = 880
 
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell System Management Tool v1.9"
+$form.Text = "Powershell System Management Tool v2.0"
 $form.ClientSize = New-Object System.Drawing.Size(($groupWidth + $margin * 2), 705)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
@@ -165,11 +208,11 @@ $btnUsers.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWi
 $btnUsers.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
 Style-Button $btnUsers
 
-$btnDiskSpace = New-Object System.Windows.Forms.Button
-$btnDiskSpace.Text = "Disk Space"
-$btnDiskSpace.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row1Y)
-$btnDiskSpace.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
-Style-Button $btnDiskSpace
+$btnConfigMgr = New-Object System.Windows.Forms.Button
+$btnConfigMgr.Text = "ConfigMgr Actions"
+$btnConfigMgr.Location = New-Object System.Drawing.Point(($buttonStartX + ($buttonWidth + $buttonSpacing) * 2), $row1Y)
+$btnConfigMgr.Size = New-Object System.Drawing.Size($buttonWidth, $buttonHeight)
+Style-Button $btnConfigMgr
 
 $btnPrinters = New-Object System.Windows.Forms.Button
 $btnPrinters.Text = "Printers"
@@ -385,6 +428,15 @@ function Get-SystemInformation {
             "Free Memory(GB) : $([math]::Round($os.FreePhysicalMemory/1MB, 2))"
             "Last Boot Time  : $($os.LastBootUpTime)"
             "System Uptime   : $uptimeString"
+            "`nDISK INFORMATION`n==================`n"
+            Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | ForEach-Object {
+                "Drive: $($_.DeviceID)"
+                "Label: $($_.VolumeName)"
+                "Size (GB): $([math]::Round($_.Size/1GB, 2))"
+                "Free (GB): $([math]::Round($_.FreeSpace/1GB, 2))"
+                "Free (%): $([math]::Round(($_.FreeSpace/$_.Size)*100, 1))"
+                "------------------------"
+            }
         }
         
         $result = Invoke-Command -scriptBlock $script -computerName $computerName
@@ -429,9 +481,9 @@ function Get-RunningServices {
     Update-Status "Ready"
 }
 
-# Get Disk Space
-function Get-DiskSpaceInfo {
-    Update-Status "Getting disk space information..."
+# Invoke Configuration Manager Actions
+function Invoke-ConfigMgrActions {
+    Update-Status "Triggering Configuration Manager actions..."
     
     $computerName = $computerInput.Text
     if ([string]::IsNullOrWhiteSpace($computerName)) { $computerName = "." }
@@ -443,16 +495,32 @@ function Get-DiskSpaceInfo {
     
     try {
         $script = {
-            "DISK SPACE INFORMATION`n=====================`n"
-            Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' |
-                ForEach-Object {
-                    "Drive: $($_.DeviceID)"
-                    "Label: $($_.VolumeName)"
-                    "Size (GB): $([math]::Round($_.Size/1GB, 2))"
-                    "Free (GB): $([math]::Round($_.FreeSpace/1GB, 2))"
-                    "Free (%): $([math]::Round(($_.FreeSpace/$_.Size)*100, 1))"
-                    "------------------------`n"
+            $actions = @{
+                'Machine Policy Retrieval'= '{00000000-0000-0000-0000-000000000021}'
+                'Discovery Data Collection'= '{00000000-0000-0000-0000-000000000003}'
+                'File Collection'= '{00000000-0000-0000-0000-000000000010}'
+                'Software Metering'= '{00000000-0000-0000-0000-000000000031}'
+                'Software Updates Deployment'= '{00000000-0000-0000-0000-000000000032}'
+                'Windows Installer Source'= '{00000000-0000-0000-0000-000000000021}'
+                'Application Deployment'= '{00000000-0000-0000-0000-000000000121}'
+                'Hardware Inventory'= '{00000000-0000-0000-0000-000000000001}'
+                'Update Deployment'= '{00000000-0000-0000-0000-000000000108}'
+                'Software Updates Scan'= '{00000000-0000-0000-0000-000000000113}'
+                'Software Inventory'= '{00000000-0000-0000-0000-000000000002}'
+            }
+
+            "CONFIGURATION MANAGER ACTIONS`n===========================`n"
+            $results = @()
+            foreach ($action in $actions.GetEnumerator()) {
+                try {
+                    $null = Invoke-WmiMethod -Namespace "root\ccm" -Class "SMS_Client" -Name "TriggerSchedule" -ArgumentList $action.Value -ErrorAction Stop
+                    $results += "✓ Successfully triggered: $($action.Key)"
                 }
+                catch {
+                    $results += "✗ Failed to trigger: $($action.Key) - $($_.Exception.Message)"
+                }
+            }
+            $results | ForEach-Object { $_ + "`n" }
         }
         
         $result = Invoke-Command -scriptBlock $script -computerName $computerName
@@ -848,7 +916,7 @@ function Remove-NetworkPrintersAndPorts {
             Write-Host "`nCleaning up unused printer ports..."
             
             # Remove unused ports (skip standard ports and SecurePrint port)
-            $standardPorts = @("FILE:", "LPT1:", "LPT2:", "LPT3:", "COM1:", "COM2:", "COM3:", "COM4:", "PORTPROMPT:", "NUL:")
+            $standardPorts = @("FILE:", "LPT1:", "LPT2:", "LPT3:", "COM1:", "COM2:", "COM3:", "COM4:", "PORTPROMPT:", "NUL:", "\\khnsecureprint\SecurePrint")
             foreach ($port in $ports) {
                 if ($port.Name -notin $standardPorts -and $port.Name -notin $usedPorts) {
                     try {
@@ -1809,7 +1877,7 @@ function Manage-PrinterSetup {
 # Row 1
 $btnPing.Add_Click({ Test-ComputerPing })
 $btnUsers.Add_Click({ Get-UserSessions })
-$btnDiskSpace.Add_Click({ Get-DiskSpaceInfo })
+$btnConfigMgr.Add_Click({ Invoke-ConfigMgrActions })
 $btnPrinters.Add_Click({ Get-PrinterInfo })
 $btnPrinterMgmt.Add_Click({ Manage-PrinterSetup })
 $btnPrinterCleanup.Add_Click({ Start-PrinterCleanup })
@@ -1835,7 +1903,7 @@ $btnRestart.Add_Click({ Restart-TargetComputer })
 # Add controls to groups
 $targetGroup.Controls.AddRange(@($computerLabel, $computerInput))
 $buttonGroup.Controls.AddRange(@(
-    $btnPing, $btnUsers, $btnDiskSpace, $btnPrinters, $btnPrinterMgmt, $btnPrinterCleanup,  # Row 1
+    $btnPing, $btnUsers, $btnConfigMgr, $btnPrinters, $btnPrinterMgmt, $btnPrinterCleanup,  # Row 1
     $btnSysInfo, $btnOpenShare, $btnPowerStates, $btnApps, $btnServices, $btnRestartService,  # Row 2
     $btnCompMgmt, $btnRenamePC, $btnDismRestore, $btnCleanProfiles, $btnLogOff, $btnRestart  # Row 3
 ))
