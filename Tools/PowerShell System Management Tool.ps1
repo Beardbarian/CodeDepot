@@ -916,7 +916,7 @@ function Remove-NetworkPrintersAndPorts {
             Write-Host "`nCleaning up unused printer ports..."
             
             # Remove unused ports (skip standard ports and SecurePrint port)
-            $standardPorts = @("FILE:", "LPT1:", "LPT2:", "LPT3:", "COM1:", "COM2:", "COM3:", "COM4:", "PORTPROMPT:", "NUL:", "\\khnsecureprint\SecurePrint")
+            $standardPorts = @("FILE:", "LPT1:", "LPT2:", "LPT3:", "COM1:", "COM2:", "COM3:", "COM4:", "PORTPROMPT:", "NUL:")
             foreach ($port in $ports) {
                 if ($port.Name -notin $standardPorts -and $port.Name -notin $usedPorts) {
                     try {
