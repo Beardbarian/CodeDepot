@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  cleaner:
+    image: docker:latest
+    command: sh -c "while true; do docker system prune -a -f; sleep 86400; done"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    deploy:
+      placement:
+        constraints: [node.role == manager] # Recommended for Swarm
