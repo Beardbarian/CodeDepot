@@ -3,7 +3,7 @@
 move c:\windows\system32\utilman.exe c:\windows\system32\utilman.old
 copy c:\windows\system32\cmd.exe c:\windows\system32\utilman.exe
 3. Reboot
-4. Accessibility icon will now open and admin command prompt
+4. Accessibility icon will now open an admin command prompt
 5. When completed with work revert changes via:
 del c:\windows\system32\utilman.exe
 move c:\windows\system32\utilman.old c:\windows\system32\utilman.exe
