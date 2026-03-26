@@ -75,9 +75,9 @@ Set-ItemProperty -Path $WidgetPath -Name AllowNewsAndInterests -Type DWord -Valu
 $ContextKey = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32"
 if (-not (Test-Path $ContextKey)) { New-Item -Path $ContextKey -Value "" -Force | Out-Null }
 
-# 4. Refresh Explorer
-Stop-Process -ProcessName explorer -Force
-
-# 5. Create Registry entry to work with detection scriptNew-Item -Path "HKLM:\SOFTWARE\MyCustomConfig" -Force | Out-Null
+# 4. Create Registry entry for detection
 New-Item -Path "HKLM:\SOFTWARE\MyCustomConfig" -Force | Out-Null
 New-ItemProperty -Path "HKLM:\SOFTWARE\MyCustomConfig" -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
+
+# 5. Exit with 3010 (The Windows code for "Success, but Reboot Required")
+exit 3010
