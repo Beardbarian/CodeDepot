@@ -77,3 +77,7 @@ if (-not (Test-Path $ContextKey)) { New-Item -Path $ContextKey -Value "" -Force 
 
 # 4. Refresh Explorer
 Stop-Process -ProcessName explorer -Force
+
+# 5. Create Registry entry to work with detection scriptNew-Item -Path "HKLM:\SOFTWARE\MyCustomConfig" -Force | Out-Null
+New-Item -Path "HKLM:\SOFTWARE\MyCustomConfig" -Force | Out-Null
+New-ItemProperty -Path "HKLM:\SOFTWARE\MyCustomConfig" -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
