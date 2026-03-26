@@ -27,57 +27,41 @@ $AppsToRemove = @(
 )
 
 foreach ($AppName in $AppsToRemove) {
-    # Remove from current user session
     Get-AppxPackage -Name $AppName -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue
-    # Remove from the Windows Image (Provisioned) so they don't come back
     Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like $AppName} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 }
 
-# 2. UI Customization (Left Align, Dark Mode, Solid Black)
-$RegistryPaths = @(
-    "HKCU:\Software\Policies\Microsoft\Windows\CloudContent",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"
-)
-
-# Ensure paths exist before setting values
-foreach ($path in $RegistryPaths) {
-    if (-not (Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
-}
-
-# Apply Styles
-Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\CloudContent' -Name DisableSpotlightCollectionOnDesktop -Type DWord -Value 1
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings' -Name EnabledState -Type DWord -Value 0
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers' -Name BackgroundType -Type DWord -Value 1
-Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name WallPaper -Value ""
-Set-ItemProperty -Path 'HKCU:\Control Panel\Colors' -Name Background -Value "0 0 0"
-
-# Taskbar and Search
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name TaskbarAl -Type DWord -Value 0 # Left Align
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name SearchboxTaskbarMode -Type DWord -Value 0 # Hide Search
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name ShowTaskViewButton -Type DWord -Value 0
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name TaskbarMn -Type DWord -Value 0
-
-# Dark Mode
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name AppsUseLightTheme -Type DWord -Value 0
-Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name SystemUsesLightTheme -Type DWord -Value 0
-
-# 3. System Tweaks (Widgets & Context Menu)
-# Disable Widgets
+# 2. System-Wide Registry Tweaks (Widgets)
 $WidgetPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
 if (-not (Test-Path $WidgetPath)) { New-Item -Path $WidgetPath -Force | Out-Null }
 Set-ItemProperty -Path $WidgetPath -Name AllowNewsAndInterests -Type DWord -Value 0
 
-# Restore Classic Context Menu (Win10 Style)
-$ContextKey = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32"
-if (-not (Test-Path $ContextKey)) { New-Item -Path $ContextKey -Value "" -Force | Out-Null }
+# 3. Active Setup for User-Specific UI Tweaks
+$UserSettingsCmd = 'powershell.exe -ExecutionPolicy Bypass -Command "' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Policies\Microsoft\Windows\CloudContent\" -Name \"DisableSpotlightCollectionOnDesktop\" -Value 1 -Force -ErrorAction SilentlyContinue; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings\" -Name \"EnabledState\" -Value 0 -Force -ErrorAction SilentlyContinue; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\" -Name \"BackgroundType\" -Value 1 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Control Panel\Desktop\" -Name \"WallPaper\" -Value \"\"; ' +
+    'Set-ItemProperty -Path \"HKCU:\Control Panel\Colors\" -Name \"Background\" -Value \"0 0 0\"; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"TaskbarAl\" -Value 0 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\" -Name \"SearchboxTaskbarMode\" -Value 0 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"ShowTaskViewButton\" -Value 0 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"TaskbarMn\" -Value 0 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\" -Name \"AppsUseLightTheme\" -Value 0 -Force; ' +
+    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\" -Name \"SystemUsesLightTheme\" -Value 0 -Force; ' +
+    'New-Item -Path \"HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32\" -Value \"\" -Force' +
+'"'
 
-# 4. Create Registry entry for detection
-New-Item -Path "HKLM:\SOFTWARE\MyCustomConfig" -Force | Out-Null
-New-ItemProperty -Path "HKLM:\SOFTWARE\MyCustomConfig" -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
+# Register the Active Setup component in HKLM
+$ActiveSetupPath = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\MyCustomConfig"
+if (-not (Test-Path $ActiveSetupPath)) { New-Item -Path $ActiveSetupPath -Force | Out-Null }
+Set-ItemProperty -Path $ActiveSetupPath -Name "Version" -Value "1"
+Set-ItemProperty -Path $ActiveSetupPath -Name "StubPath" -Value $UserSettingsCmd
 
-# 5. Exit with 3010 (The Windows code for "Success, but Reboot Required")
+# 4. Final Success Flag for Detection Script (HKLM)
+$ConfigPath = "HKLM:\SOFTWARE\MyCustomConfig"
+if (-not (Test-Path $ConfigPath)) { New-Item -Path $ConfigPath -Force | Out-Null }
+New-ItemProperty -Path $ConfigPath -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
+
+# 5. Exit with Soft Reboot Code
 exit 3010
