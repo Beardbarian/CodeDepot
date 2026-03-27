@@ -40,43 +40,34 @@ foreach ($AppName in $AppsToRemove) {
     Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like $AppName} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 }
 
-# 3. System-Wide Registry Tweaks (Widgets)
-$WidgetPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
-if (-not (Test-Path $WidgetPath)) { New-Item -Path $WidgetPath -Force | Out-Null }
-Set-ItemProperty -Path $WidgetPath -Name AllowNewsAndInterests -Type DWord -Value 0
-
-# 4. Active Setup for User-Specific UI Tweaks (Dark Mode, Black BG, Taskbar)
-# Create a local 'UserConfig.ps1' that stays on the machine
+# 3. Create the Local User Configuration Script
+$UserScriptPath = "C:\Windows\UserConfig.ps1"
 $UserScriptContent = @"
-    'Set-ItemProperty -Path \"HKCU:\Software\Policies\Microsoft\Windows\CloudContent\" -Name \"DisableSpotlightCollectionOnDesktop\" -Value 1 -Force -ErrorAction SilentlyContinue; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings\" -Name \"EnabledState\" -Value 0 -Force -ErrorAction SilentlyContinue; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers\" -Name \"BackgroundType\" -Value 1 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Control Panel\Desktop\" -Name \"WallPaper\" -Value \"\"; ' +
-    'Set-ItemProperty -Path \"HKCU:\Control Panel\Colors\" -Name \"Background\" -Value \"0 0 0\"; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"TaskbarAl\" -Value 0 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Search\" -Name \"SearchboxTaskbarMode\" -Value 0 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"ShowTaskViewButton\" -Value 0 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\" -Name \"TaskbarMn\" -Value 0 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\" -Name \"AppsUseLightTheme\" -Value 0 -Force; ' +
-    'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\" -Name \"SystemUsesLightTheme\" -Value 0 -Force; ' +
-    'New-Item -Path \"HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32\" -Value \"\" -Force' +
+Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\CloudContent" -Name "DisableSpotlightCollectionOnDesktop" -Value 1 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings" -Name "EnabledState" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Wallpapers" -Name "BackgroundType" -Value 1 -Force
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "WallPaper" -Value ""
+Set-ItemProperty -Path "HKCU:\Control Panel\Colors" -Name "Background" -Value "0 0 0"
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarAl" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarMn" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "AppsUseLightTheme" -Value 0 -Force
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "SystemUsesLightTheme" -Value 0 -Force
+New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Value "" -Force
 "@
+$UserScriptContent | Out-File -FilePath $UserScriptPath -Encoding utf8 -Force
 
-$LocalUserScript = "C:\Windows\UserConfig.ps1"
-$UserScriptContent | Out-File -FilePath $LocalUserScript -Force
-
-# Register Active Setup in 64-bit hive
+# 4. Set Active Setup (64-bit hive)
+# This points Windows to run the local script that was just created
 $ASPath = "SOFTWARE\Microsoft\Active Setup\Installed Components\MyCustomConfig"
-$RegistryKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
-$SubKey = $RegistryKey.CreateSubKey($ASPath)
+$ASKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+$ASSubKey = $ASKey.CreateSubKey($ASPath)
+$ASSubKey.SetValue("Version", "5")
+$ASSubKey.SetValue("StubPath", "powershell.exe -ExecutionPolicy Bypass -File $UserScriptPath")
+$ASSubKey.Close()
+$ASKey.Close()
 
-# Date-based version so it always increments during testing
-$SubKey.SetValue("Version", "2026032601") 
-$SubKey.SetValue("StubPath", "powershell.exe -ExecutionPolicy Bypass -File $LocalUserScript")
-$SubKey.Close()
-$RegistryKey.Close()
-
-# 5. Forced Hard Reboot
-# Triggers a restart in 5 seconds to flush the E3 identity broker and trigger Active Setup
+# 5. Forced Reboot
 Start-Process "shutdown.exe" -ArgumentList "/r /t 5 /f" -Wait
 exit 0
