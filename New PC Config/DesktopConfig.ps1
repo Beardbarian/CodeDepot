@@ -1,4 +1,12 @@
-# 1. Provisioned App Removal
+# 1. Create Detection Flag IMMEDIATELY (HKLM)
+# We do this first so Intune knows the script at least started.
+$registryPath = "HKLM:\SOFTWARE\MyCustomConfig"
+if (-not (Test-Path $registryPath)) {
+    New-Item -Path $registryPath -Force | Out-Null
+}
+New-ItemProperty -Path $registryPath -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
+
+# 2. Provisioned App Removal
 $AppsToRemove = @(
     "*Clipchamp.Clipchamp*", 
     "*bing*", 
@@ -31,12 +39,12 @@ foreach ($AppName in $AppsToRemove) {
     Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like $AppName} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 }
 
-# 2. System-Wide Registry Tweaks (Widgets)
+# 3. System-Wide Registry Tweaks
 $WidgetPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
 if (-not (Test-Path $WidgetPath)) { New-Item -Path $WidgetPath -Force | Out-Null }
 Set-ItemProperty -Path $WidgetPath -Name AllowNewsAndInterests -Type DWord -Value 0
 
-# 3. Active Setup for User-Specific UI Tweaks
+# 4. Active Setup for User-Specific UI Tweaks
 $UserSettingsCmd = 'powershell.exe -ExecutionPolicy Bypass -Command "' +
     'Set-ItemProperty -Path \"HKCU:\Software\Policies\Microsoft\Windows\CloudContent\" -Name \"DisableSpotlightCollectionOnDesktop\" -Value 1 -Force -ErrorAction SilentlyContinue; ' +
     'Set-ItemProperty -Path \"HKCU:\Software\Microsoft\Windows\CurrentVersion\DesktopSpotlight\Settings\" -Name \"EnabledState\" -Value 0 -Force -ErrorAction SilentlyContinue; ' +
@@ -57,11 +65,6 @@ $ActiveSetupPath = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\M
 if (-not (Test-Path $ActiveSetupPath)) { New-Item -Path $ActiveSetupPath -Force | Out-Null }
 Set-ItemProperty -Path $ActiveSetupPath -Name "Version" -Value "1"
 Set-ItemProperty -Path $ActiveSetupPath -Name "StubPath" -Value $UserSettingsCmd
-
-# 4. Final Success Flag for Detection Script (HKLM)
-$ConfigPath = "HKLM:\SOFTWARE\MyCustomConfig"
-if (-not (Test-Path $ConfigPath)) { New-Item -Path $ConfigPath -Force | Out-Null }
-New-ItemProperty -Path $ConfigPath -Name "ConfigApplied" -Value 1 -PropertyType DWord -Force
 
 # 5. Exit with Soft Reboot Code
 exit 3010
