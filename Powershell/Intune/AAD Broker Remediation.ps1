@@ -1,5 +1,4 @@
 # Adds "ALL APPLICATION PACKAGES" with Read permissions to HKLM\SYSTEM\CurrentControlSet\Control using SID
-
 $registryPath = "HKLM\SYSTEM\CurrentControlSet\Control"
 $principalSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-15-2-1")
 
