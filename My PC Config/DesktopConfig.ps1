@@ -7,7 +7,15 @@ $SubKey.SetValue("ConfigApplied", 1, [Microsoft.Win32.RegistryValueKind]::DWord)
 $SubKey.Close()
 $RegistryKey.Close()
 
-# 2. Provisioned App Removal
+# 2. Disable Prefetcher (64-bit Hive Safe)
+$PrefetchPath = "SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters"
+$PrefetchKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+$PrefetchSubKey = $PrefetchKey.CreateSubKey($PrefetchPath)
+$PrefetchSubKey.SetValue("EnablePrefetcher", 0, [Microsoft.Win32.RegistryValueKind]::DWord)
+$PrefetchSubKey.Close()
+$PrefetchKey.Close()
+
+# 3. Provisioned App Removal
 $AppsToRemove = @(
     "*Clipchamp.Clipchamp*", 
     "*bing*", 
@@ -40,7 +48,7 @@ foreach ($AppName in $AppsToRemove) {
     Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -like $AppName} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 }
 
-# 3. Create the Local User Configuration Script
+# 4. Create the Local User Configuration Script
 $UserScriptPath = "C:\Windows\UserConfig.ps1"
 $UserScriptContent = @"
 Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\CloudContent" -Name "DisableSpotlightCollectionOnDesktop" -Value 1 -Force
@@ -58,7 +66,7 @@ New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2
 "@
 $UserScriptContent | Out-File -FilePath $UserScriptPath -Encoding utf8 -Force
 
-# 4. Set Active Setup (64-bit hive)
+# 5. Set Active Setup (64-bit hive)
 # This points Windows to run the local script that was just created
 $ASPath = "SOFTWARE\Microsoft\Active Setup\Installed Components\MyCustomConfig"
 $ASKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
@@ -68,6 +76,6 @@ $ASSubKey.SetValue("StubPath", "powershell.exe -ExecutionPolicy Bypass -File $Us
 $ASSubKey.Close()
 $ASKey.Close()
 
-# 5. Forced Reboot
+# 6. Forced Reboot
 Start-Process "shutdown.exe" -ArgumentList "/r /t 5 /f" -Wait
 exit 0
